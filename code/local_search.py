@@ -15,7 +15,7 @@ import itertools as it
 
 def learn_weighted_max_sat(
     m: int, data: np.ndarray, labels: np.ndarray, contexts: List[Clause], 
-    cutoff_score:int, cutoff_time:int, seed: int
+    cutoff_score:int, prob:float, cutoff_time=60, seed=1
 ) -> MaxSatModel:
     """
     Learn a weighted MaxSAT model from examples. Contexts and clauses are set-encoded, i.e., they are represented by
@@ -54,7 +54,10 @@ def learn_weighted_max_sat(
     time_taken=time.time()-start
     
     while score<cutoff_score and time.time()-start<cutoff_time:
-        neighbours=model.valid_neighbours()
+        if rng.random_sample()<prob:
+            neighbours=[model.random_neighbour(rng)]
+        else:
+            neighbours=model.valid_neighbours()
         model,score,correct_examples=best_neighbour(model,correct_examples,
                                                     neighbours,data,labels,
                                                     contexts,rng)
@@ -84,7 +87,7 @@ def best_neighbour(model,correct_examples,neighbours,data,labels,contexts,rng):
     scores=[0 for i in range(len(neighbours))]
     for m,next_model in enumerate(neighbours):
         for i,example in enumerate(data):   
-#            print(i,correct_examples[i],next_model.is_correct(example,labels[i],contexts[i]))
+#            print(next_model.maxSatModel(),example,labels[i],contexts[i])
             if ( correct_examples[i]==1 and 
                 next_model.is_correct(example,labels[i],contexts[i])
                 ):
@@ -272,7 +275,7 @@ def example2():
         {2, 3},
     ]
 
-    learn_weighted_max_sat(3, data, labels, contexts,18,200,1)
+    learn_weighted_max_sat(3, data, labels, contexts,18,0.4,3000,5)
 
 
 if __name__ == "__main__":

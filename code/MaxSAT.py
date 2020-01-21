@@ -42,17 +42,20 @@ class MaxSAT:
         
         return neighbours
     
-    def random_neighbour(self,seed):
+    def random_neighbour(self,rng):
         neighbour=self.deep_copy()
-        np.random.seed(seed)
-        random_clause=np.random.randint(0,neighbour.k)
-        random_vector=np.random.randint(0,2)
+#        np.random.seed(seed)
+        random_clause=rng.randint(0,neighbour.k)
+        random_vector=rng.randint(0,2)
         if random_vector==0:
             neighbour.c[random_clause]=1-neighbour.c[random_clause]
             return neighbour
-        random_literal=np.random.randint(0,neighbour.n)
-        values=[-1,0,1].remove(neighbour.l[random_clause][random_literal])
-        neighbour.l[random_clause][random_literal]=np.random.choice(values)
+        random_literal=rng.randint(0,neighbour.n)
+        values=[-1,0,1]
+        values.remove(neighbour.l[random_clause][random_literal])
+        if len([i for i in neighbour.l[random_clause] if i!=0])==1 and neighbour.l[random_clause][random_literal]!=0:
+            values.remove(0)
+        neighbour.l[random_clause][random_literal]=int(rng.choice(values))
         return neighbour
     
     def score(self,data,labels,contexts):
