@@ -10,10 +10,11 @@ import numpy as np
 import copy
 from type_def import MaxSatModel
 from pysat_solver import solve_weighted_max_sat, get_value
+from walk_sat_neighbours import neighbours_inf, neighbours_pos, neighbours_sub
 
 class MaxSAT:
     
-    def __init__(self,c,w,l):
+    def __init__(self,c=[],w=[],l=[[]]):
         self.c=c #tells wether a constraint is hard
         self.w=w #tells wether a constraint is soft, always 1?
         self.l=l #tells wether a literal j is present in clause i
@@ -21,6 +22,48 @@ class MaxSAT:
         self.n=len(l[0]) #number of variables
 #        self.clauses=self.get_clauses(l)
         
+    def from_max_sat_model(self,n:int,model:MaxSatModel):
+        k=len(model)
+        c=[0]*k
+        w=[1]*k
+        l=[[0]*n for i in range(k)]
+        i=0
+        for weight,clause in model:
+            if w is None:
+                c[i]=1
+            else:
+                w[i]=weight
+            
+            for literal in clause:
+                l[i][np.abs(literal)]=np.sign(literal)
+            i+=1
+        self.c=c
+        self.w=w
+        self.l=l
+        self.k=k
+        self.n=n
+                
+        
+    def walk_sat_neighbours(self,data,labels,contexts,rng):
+        neighbours=[]
+        violated_examples=[]
+        index=0
+        for i,example in enumerate(data):
+            if not self.is_correct(example,labels[i],contexts[i]):
+                violated_examples.append(i)
+        index=rng.choice(violated_examples)
+        picked_example=data[index]
+        val = get_value(self.maxSatModel(),picked_example,contexts[index])
+        if not labels[index]:
+            neighbours=neighbours_pos(self,picked_example,contexts[index],rng)
+        elif val is None:
+            neighbours=neighbours_inf(self,picked_example,contexts[index],rng)
+        else:
+            neighbours=neighbours_sub(self,picked_example,contexts[index],rng)
+                    
+        return neighbours
+    
+    
     """
     when looking for a neighbour make sure that the 
     clauses are compatible with each other??
@@ -59,30 +102,20 @@ class MaxSAT:
         return neighbour
     
     def score(self,data,labels,contexts):
+        """
+        Number of correctly classified examples by the model
+        """
         score=0
         correct_examples=[0]*data.shape[0]
         for i,example in enumerate(data):
-            optimum=self.optimal_value(contexts[i])
-            val=self.evaluate(example,contexts[i])
-            if (labels[i]==0) and (val==None or val<optimum):
-                score+=1
-                correct_examples[i]=1
-            elif (labels[i]==1) and (val!=None and val==optimum):
+            if self.is_correct(example,labels[i],contexts[i]):
                 score+=1
                 correct_examples[i]=1
         return score,correct_examples
     
-    def evaluate(self, example, context=[]):
-        model=self.maxSatModel()
-        if context:
-            model.append((None,context))
-        return get_value(model,example)
     
     def is_correct(self, example,label,context=[]):
-        model=self.deep_copy().maxSatModel()
-        if context:
-            model.append((None,context))
-        val = get_value(model,example)
+        val = get_value(self.maxSatModel(),example,context)
         if val is None:
             return (not label)
         else:
@@ -129,6 +162,14 @@ class MaxSAT:
 #            return self.evaluate(sol[0],context)
 #        return 0
     
+    def is_same(self,model):
+        c1,w1,l1=zip(*sorted(zip(self.c,self.w,self.l)))
+        c2,w2,l2=zip(*sorted(zip(model.c,model.w,model.l)))
+        if c1==c2 and w1==w2 and l1==l2:
+            return True
+        return False
+        
+    
     def deep_copy(self):
         c=copy.copy(self.c)
         w=copy.copy(self.w)
@@ -137,6 +178,30 @@ class MaxSAT:
                     
     def print_model(self):
         print(self.maxSatModel())
+    
+    def model_to_string(self):
+        model=self.maxSatModel()
+        letters = "abcdefghijklmnopqrstuvwxyz".upper()
+    
+        if model is None:
+            return "No model."
+    
+        def char(_l):
+            if _l < 0:
+                return f"!{letters[-_l - 1]}"
+            else:
+                return letters[_l - 1]
+    
+        result = ""
+        for weight, clause in model:
+            clause = " \\/ ".join(
+                char(l) for l in sorted(clause, key=lambda x: (abs(x), 0 if x > 0 else 1))
+            )
+            result += (
+                f"{'hard' if weight is None else 'soft'}, "
+                f"{0.0 if weight is None else weight}: {clause}\n"
+            )
+        return result
                     
                     
                     

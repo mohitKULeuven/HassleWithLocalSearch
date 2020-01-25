@@ -12,7 +12,7 @@ from pysat.examples.rc2 import RC2
 import numpy as np
 import csv
 
-from type_def import MaxSatModel, Clause, Instance
+from type_def import MaxSatModel, Clause, Instance,Context
 
 
 def solve_weighted_max_sat(n: int, model: MaxSatModel, context: Clause, 
@@ -20,6 +20,7 @@ def solve_weighted_max_sat(n: int, model: MaxSatModel, context: Clause,
     """
     Solves a MaxSatModel and tries to return num_sol optimal solutions
     """
+#    print(n,model,context)
     c=WCNF()
     c.nv=n
     for w, clause in model:
@@ -64,13 +65,16 @@ def solve_weighted_max_sat_file(wcnf_file, context: Clause,
     return model
 
 
-def get_value(model: MaxSatModel, instance: Instance) -> Optional[float]:
+def get_value(model: MaxSatModel, instance: Instance, context=[]) -> Optional[float]:
     """
     Returns the weighted value of an instance
     """
 #    print(model,instance)
+    if context: 
+        model.append((None,context))
     value = 0
     for weight, clause in model:
+#        print(instance,clause)
         covered = any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
@@ -99,6 +103,18 @@ def get_cost(model: MaxSatModel, instance: Instance) -> Optional[float]:
             if not covered:
                 value += weight
     return value
+
+
+def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> bool:
+    value = get_value(model, instance)
+    if value is None:
+        return False
+    best_instance,cst = solve_weighted_max_sat(len(instance), model, context, 1)
+#    print(model, best_instance)
+    best_value = get_value(model, best_instance)
+    return value >= best_value
+
+
 
 def represent_int(s):
     try:

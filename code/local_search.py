@@ -9,13 +9,148 @@ Created on Sun Jan 19 16:46:25 2020
 import numpy as np
 import time
 from typing import List
-from type_def import MaxSatModel, Clause, suppress_stdout, Instance, Context
+from type_def import MaxSatModel, Clause
 import MaxSAT
-import itertools as it
+import matplotlib.pyplot as plt
+import copy
+
+def eval_neighbours(model,correct_examples,neighbours,data,
+                   labels,contexts,num_neighbours,rng):
+    neighbours=copy.copy(neighbours)
+    next_correct_examples=np.zeros([len(neighbours),data.shape[0]])
+    
+    scores=[0 for i in range(len(neighbours))]
+    for m,next_model in enumerate(neighbours):
+        for i,example in enumerate(data):   
+            if ( correct_examples[i]==1 and 
+                next_model.is_correct(example,labels[i],contexts[i])
+                ):
+                next_correct_examples[m,i]=1
+                scores[m]+=1
+    
+    lst_scores=[]
+    lst_models=[]
+    lst_correct_examples=[]
+    for _ in range(num_neighbours):
+        
+        lst_scores.append(max(scores))
+        best_index=rng.choice([i for i,v in enumerate(scores) if v==lst_scores[-1]])
+        lst_models.append(neighbours[best_index])
+        del scores[best_index]
+        del neighbours[best_index]
+    
+        for i,example in enumerate(data):
+            if ( correct_examples[i]==0 and 
+                lst_models[-1].is_correct(example,labels[i],contexts[i])
+                ):
+                next_correct_examples[best_index,i]=1
+                lst_scores[-1]+=1    
+        lst_correct_examples.append(next_correct_examples[best_index,:])
+    return lst_models,lst_scores,lst_correct_examples
+ 
+  
+def walk_sat(model,correct_examples,neighbours,data,
+             labels,contexts,p,rng):
+    prev_score=len(correct_examples)
+    lst_models,lst_scores,lst_correct_examples=eval_neighbours(model,
+                                                     correct_examples,
+                                                     neighbours,data,
+                                                     labels,contexts,1,rng)
+    next_model,score,correct_examples=lst_models[0],lst_scores[0],lst_correct_examples[0]
+    if score==prev_score:
+        return next_model,score,correct_examples
+    elif rng.random_sample()<p:
+        next_model=neighbours[rng.randint(0,len(neighbours))]
+        score,correct_examples=next_model.score(data,labels,contexts)
+        return next_model,score,correct_examples
+    else:
+        return next_model,score,correct_examples
+
+def novelty(model,prev_model,correct_examples,neighbours,data,
+             labels,contexts,p,rng):
+    lst_models,lst_scores,lst_correct_examples=eval_neighbours(model,
+                                                             correct_examples,
+                                                             neighbours,data,
+                                                             labels,contexts,2,rng)
+    if not lst_models[0].is_same(prev_model):
+        return lst_models[0],lst_scores[0],lst_correct_examples[0]
+    elif rng.random_sample()>p:
+        return lst_models[0],lst_scores[0],lst_correct_examples[0]
+    else:
+        return lst_models[1],lst_scores[1],lst_correct_examples[1]
+    
+def novelty_plus(model,prev_model,correct_examples,neighbours,data,
+             labels,contexts,p,wp,rng):
+    if rng.random_sample()<wp:
+        next_model=neighbours[rng.randint(0,len(neighbours))]
+        score,correct_examples=next_model.score(data,labels,contexts)
+        return next_model,score,correct_examples
+    return novelty(model,prev_model,correct_examples,neighbours,data,
+                   labels,contexts,p,rng)
+    
+def adaptive_novelty_plus(model,prev_model,correct_examples,neighbours,data,
+             labels,contexts,p,wp,theta,phi,rng):
+    if rng.random_sample()<wp:
+        next_model=neighbours[rng.randint(0,len(neighbours))]
+        score,correct_examples=next_model.score(data,labels,contexts)
+        return next_model,score,correct_examples
+    return novelty(model,prev_model,correct_examples,neighbours,data,
+                   labels,contexts,p,rng)
+
+  
+def best_neighbour(model,prev_model,correct_examples,neighbours,data,
+                   labels,contexts,method,p,wp,theta,phi,rng):
+    """
+    Returns a model which breaks least of the 
+    already satisfied examples with it's score
+    """
+    if rng.random_sample()<wp:
+        next_model=neighbours[rng.randint(0,len(neighbours))]
+        score,correct_examples=next_model.score(data,labels,contexts)
+        return next_model,score,correct_examples
+    else:
+        if method=="walk_sat":
+            return walk_sat(model,correct_examples,neighbours,data,
+                            labels,contexts,p,rng)
+            
+        elif method=="novelty":
+            return novelty(model,prev_model,correct_examples,neighbours,data,
+                           labels,contexts,p,rng)
+            
+        elif method=="novelty_plus":
+            return novelty_plus(model,prev_model,correct_examples,neighbours,
+                                data,labels,contexts,p,wp,rng)
+        
+        else:
+            return adaptive_novelty_plus(model,prev_model,correct_examples,
+                                         neighbours,data,labels,contexts,p,
+                                         wp,theta,phi,rng)
+
+  
+def ternary(n,length):
+    e=n//3
+    q=n%3
+    if length>1:
+        if n==0:
+            return ternary(e,length-1)+[0]
+        elif e==0:
+            return ternary(e,length-1)+[q]
+        else:
+            return ternary(e,length-1) + [q]
+    else:
+        if n==0:
+            return [0]
+        elif e==0:
+            return [q]
+        else:
+            return ternary(e,length-1) + [q]
+        
+      
+
 
 def learn_weighted_max_sat(
     m: int, data: np.ndarray, labels: np.ndarray, contexts: List[Clause], 
-    cutoff_score:int, prob:float, cutoff_time=60, seed=1
+    method,cutoff_score:int, p=0.1,wp=0.1,theta=0.17,phi=0.2, cutoff_time=5, seed=1
 ) -> MaxSatModel:
     """
     Learn a weighted MaxSAT model from examples. Contexts and clauses are set-encoded, i.e., they are represented by
@@ -36,7 +171,8 @@ def learn_weighted_max_sat(
     """
     start = time.time()
     # starting with a random model
-
+    scores=[]
+    best_scores=[]
     rng = np.random.RandomState(seed)
     c=[rng.randint(0,2) for i in range(m)]
     w=[1 for i in range(m)]
@@ -46,86 +182,43 @@ def learn_weighted_max_sat(
     
 #    l=[[rng.choice([-1,0,1]) for j in range(data.shape[1])] for i in range(m)]
     model = MaxSAT.MaxSAT(c,w,l)
+    prev_model=model
     
     score,correct_examples=model.score(data,labels,contexts)
-    print(model.maxSatModel(),score)
+    scores.append(score)
+    print("Initial Score: ",score*100/data.shape[0])
     solution=model.deep_copy()
     best_score=score
     time_taken=time.time()-start
     
     while score<cutoff_score and time.time()-start<cutoff_time:
-        if rng.random_sample()<prob:
-            neighbours=[model.random_neighbour(rng)]
-        else:
-            neighbours=model.valid_neighbours()
-        model,score,correct_examples=best_neighbour(model,correct_examples,
-                                                    neighbours,data,labels,
-                                                    contexts,rng)
-        print(model.maxSatModel(),score)
+        neighbours=model.walk_sat_neighbours(data,labels,contexts,rng)
+        if len(neighbours)==0:
+            continue
+        elif method!="walk_sat" and len(neighbours)<2:
+            continue
+        next_model,score,correct_examples=best_neighbour(model,prev_model,
+                                                         correct_examples,
+                                                         neighbours,data,labels,
+                                                         contexts,method,p,wp,
+                                                         theta,phi,rng)
+        scores.append(score)
+        prev_model=model
+        model=next_model
+#        print(model.maxSatModel(),score)
         if score > best_score:
             solution=model.deep_copy()
             best_score=score
             time_taken=time.time()-start
+        best_scores.append(best_score)
 #        break
+    
     print(f"time taken: {time_taken} seconds")   
-    print(solution.maxSatModel(),best_score)     
-    return solution.maxSatModel()
+    score_percentage=best_score,best_score*100/data.shape[0]
+    print("Final Score: ",score_percentage)
+#    print(solution.maxSatModel(),best_score,best_score*100/data.shape[0]) 
     
- 
-def best_neighbour(model,correct_examples,neighbours,data,labels,contexts,rng):
-    """
-    Returns a model which breaks least of the 
-    already satisfied examples with it's score
-    """
-#    c=[0,1]
-#    w=[1,1]
-#    l=[[1,0],[1,1]]
-#    model = MaxSAT.MaxSAT(c,w,l)
-#    neighbours=[model]
-    next_correct_examples=np.zeros([len(neighbours),data.shape[0]])
-    
-    scores=[0 for i in range(len(neighbours))]
-    for m,next_model in enumerate(neighbours):
-        for i,example in enumerate(data):   
-#            print(next_model.maxSatModel(),example,labels[i],contexts[i])
-            if ( correct_examples[i]==1 and 
-                next_model.is_correct(example,labels[i],contexts[i])
-                ):
-                next_correct_examples[m,i]=1
-                scores[m]+=1
-    
-    best_score=max(scores)
-#    print(best_score)
-#    best_index=scores.index(best_score)
-    best_index=rng.choice([i for i,v in enumerate(scores) if v==best_score])
-    best_model=neighbours[best_index]
-    for i,example in enumerate(data):
-        if ( correct_examples[i]==0 and 
-            best_model.is_correct(example,labels[i],contexts[i])
-            ):
-            next_correct_examples[best_index,i]=1
-            best_score+=1           
-    return best_model,best_score,next_correct_examples[best_index,:]
-        
-  
-def ternary(n,length):
-    e=n//3
-    q=n%3
-    if length>1:
-        if n==0:
-            return ternary(e,length-1)+[0]
-        elif e==0:
-            return ternary(e,length-1)+[q]
-        else:
-            return ternary(e,length-1) + [q]
-    else:
-        if n==0:
-            return [0]
-        elif e==0:
-            return [q]
-        else:
-            return ternary(e,length-1) + [q]
-        
+    return solution.maxSatModel(),score_percentage,time_taken,scores,best_scores
 
 
 """
@@ -174,7 +267,7 @@ def example1():
         [True, True, False, False, True, True, True, False, True, False, True, False]
     )
     contexts = [set(), set(), set(), set(), {1}, {1}, {-1}, {-1}, {2}, {2}, {-2}, {-2}]
-    learn_weighted_max_sat(2, data, labels, contexts,12,10,1)
+    learn_weighted_max_sat(2, data, labels, contexts,12,0.1,5,1)
 
 
 def example2():
@@ -275,7 +368,20 @@ def example2():
         {2, 3},
     ]
 
-    learn_weighted_max_sat(3, data, labels, contexts,18,0.4,3000,5)
+    a,b,c,scores,best_scores=learn_weighted_max_sat(3, data, labels, contexts,
+                                                    "walk_sat",18)
+    plt.plot(range(len(best_scores)),best_scores,'r-')
+    
+    a,b,c,scores,best_scores=learn_weighted_max_sat(3, data, labels, contexts,
+                                                    "novelty",18)
+    plt.plot(range(len(best_scores)),best_scores,'b-')
+    
+    a,b,c,scores,best_scores=learn_weighted_max_sat(3, data, labels, contexts,
+                                                    "novelty_plus",18)
+    plt.plot(range(len(best_scores)),best_scores,'g-')
+    
+    
+    plt.show()
 
 
 if __name__ == "__main__":
