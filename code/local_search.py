@@ -89,17 +89,24 @@ def novelty_plus(model,prev_model,correct_examples,neighbours,data,
                    labels,contexts,p,rng)
     
 def adaptive_novelty_plus(model,prev_model,correct_examples,neighbours,data,
-             labels,contexts,p,wp,theta,phi,rng):
+             labels,contexts,p,wp,theta,phi,best_scores,rng):
+    steps=int(len(labels)*theta)
+    if len(best_scores) > steps:
+        if best_scores[-steps]==best_scores[-1]:
+            wp=wp+(1-wp)*phi
+        else:
+            wp=wp-(wp*2*phi)
     if rng.random_sample()<wp:
         next_model=neighbours[rng.randint(0,len(neighbours))]
         score,correct_examples=next_model.score(data,labels,contexts)
-        return next_model,score,correct_examples
-    return novelty(model,prev_model,correct_examples,neighbours,data,
+        return next_model,score,correct_examples,wp
+    next_model,score,correct_examples=novelty(model,prev_model,correct_examples,neighbours,data,
                    labels,contexts,p,rng)
+    return next_model,score,correct_examples,wp
 
   
 def best_neighbour(model,prev_model,correct_examples,neighbours,data,
-                   labels,contexts,method,p,wp,theta,phi,rng):
+                   labels,contexts,method,p,wp,theta,phi,best_scores,rng):
     """
     Returns a model which breaks least of the 
     already satisfied examples with it's score
@@ -107,6 +114,8 @@ def best_neighbour(model,prev_model,correct_examples,neighbours,data,
     if rng.random_sample()<wp:
         next_model=neighbours[rng.randint(0,len(neighbours))]
         score,correct_examples=next_model.score(data,labels,contexts)
+        if method=="adaptive_novelty_plus":
+            return next_model,score,correct_examples,wp
         return next_model,score,correct_examples
     else:
         if method=="walk_sat":
@@ -124,7 +133,7 @@ def best_neighbour(model,prev_model,correct_examples,neighbours,data,
         else:
             return adaptive_novelty_plus(model,prev_model,correct_examples,
                                          neighbours,data,labels,contexts,p,
-                                         wp,theta,phi,rng)
+                                         wp,theta,phi,best_scores,rng)
 
   
 def ternary(n,length):
@@ -150,7 +159,7 @@ def ternary(n,length):
 
 def learn_weighted_max_sat(
     m: int, data: np.ndarray, labels: np.ndarray, contexts: List[Clause], 
-    method,cutoff_score:int, p=0.1,wp=0.1,theta=0.17,phi=0.2, cutoff_time=5, seed=1
+    method,cutoff_score:int, p=0.1,wp=0.1,theta=0.17,phi=0.2, cutoff_time=10, seed=1
 ) -> MaxSatModel:
     """
     Learn a weighted MaxSAT model from examples. Contexts and clauses are set-encoded, i.e., they are represented by
@@ -186,7 +195,7 @@ def learn_weighted_max_sat(
     
     score,correct_examples=model.score(data,labels,contexts)
     scores.append(score)
-    print("Initial Score: ",score*100/data.shape[0])
+    print("\n Initial Score: ",score*100/data.shape[0])
     solution=model.deep_copy()
     best_score=score
     time_taken=time.time()-start
@@ -197,11 +206,21 @@ def learn_weighted_max_sat(
             continue
         elif method!="walk_sat" and len(neighbours)<2:
             continue
-        next_model,score,correct_examples=best_neighbour(model,prev_model,
+        
+        if method=="adaptive_novelty_plus":
+            next_model,score,correct_examples,wp=best_neighbour(model,prev_model,
                                                          correct_examples,
                                                          neighbours,data,labels,
                                                          contexts,method,p,wp,
-                                                         theta,phi,rng)
+                                                         theta,phi,best_scores,
+                                                         rng)
+        else:
+            next_model,score,correct_examples=best_neighbour(model,prev_model,
+                                                         correct_examples,
+                                                         neighbours,data,labels,
+                                                         contexts,method,p,wp,
+                                                         theta,phi,best_scores,
+                                                         rng)    
         scores.append(score)
         prev_model=model
         model=next_model
@@ -214,7 +233,7 @@ def learn_weighted_max_sat(
 #        break
     
     print(f"time taken: {time_taken} seconds")   
-    score_percentage=best_score,best_score*100/data.shape[0]
+    score_percentage=best_score*100/data.shape[0]
     print("Final Score: ",score_percentage)
 #    print(solution.maxSatModel(),best_score,best_score*100/data.shape[0]) 
     
@@ -370,16 +389,21 @@ def example2():
 
     a,b,c,scores,best_scores=learn_weighted_max_sat(3, data, labels, contexts,
                                                     "walk_sat",18)
-    plt.plot(range(len(best_scores)),best_scores,'r-')
+    plt.plot(range(len(best_scores)),best_scores,'r-',label='Walk_SAT')
     
     a,b,c,scores,best_scores=learn_weighted_max_sat(3, data, labels, contexts,
                                                     "novelty",18)
-    plt.plot(range(len(best_scores)),best_scores,'b-')
+    plt.plot(range(len(best_scores)),best_scores,'g-',label='Novelty')
     
     a,b,c,scores,best_scores=learn_weighted_max_sat(3, data, labels, contexts,
                                                     "novelty_plus",18)
-    plt.plot(range(len(best_scores)),best_scores,'g-')
+    plt.plot(range(len(best_scores)),best_scores,'b-',label='Novelty+')
     
+    a,b,c,scores,best_scores=learn_weighted_max_sat(3, data, labels, contexts,
+                                                    "adaptive_novelty_plus",18)
+    plt.plot(range(len(best_scores)),best_scores,'y-',label='Adaptive_Novelty+')
+    
+    plt.legend(loc="lower right")
     
     plt.show()
 

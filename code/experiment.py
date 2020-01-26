@@ -4,7 +4,7 @@ import csv
 import argparse
 import itertools as it
 import numpy as np
-
+import matplotlib.pyplot as plt
 # import os
 
 from generator import generate_models,generate_contexts_and_data, generate_data
@@ -13,7 +13,7 @@ from local_search import learn_weighted_max_sat
 
 
 def learn_model(n, max_clause_length,num_hard,num_soft,model_seed,
-                num_context,context_seed,num_data):
+                num_context,context_seed,num_data,method):
     
     param = f"_n_{n}_max_clause_length_{max_clause_length}_num_hard_{num_hard}_num_soft_{num_soft}_model_seed_{model_seed}"
     param += f"_num_context_{num_context}_num_data_{num_data}_context_seed_{context_seed}"
@@ -26,14 +26,19 @@ def learn_model(n, max_clause_length,num_hard,num_soft,model_seed,
 #    print(data)
 #    print(labels)
 #    print(contexts)
-    learned_model,score,time_taken = learn_weighted_max_sat(num_hard+num_soft, data, labels, contexts,data.shape[0],0.1,5,1)
+
+    model,score,time_taken,scores,best_scores = learn_weighted_max_sat(
+            num_hard+num_soft, data,labels,
+            contexts,method,len(labels),cutoff_time=60)
 #    time_taken=time.time()-start
     
-    pickle_var["learned_model"] = learned_model
+    pickle_var["learned_model"] = model
     pickle_var["time_taken"] = time_taken
     pickle_var["score"] = score
-    pickle.dump(pickle_var, open("pickles/learned_model" + param + ".pickle", "wb"))
-    return learned_model,time_taken
+    pickle_var["scores"] = scores
+    pickle_var["best_scores"] = best_scores
+    pickle.dump(pickle_var, open("pickles/learned_model" + param + "_" + method +".pickle", "wb"))
+    return model,time_taken
 
 
 def evaluate_statistics(n,target_model,learned_model,sample_size,seed):
@@ -80,7 +85,7 @@ if __name__ == "__main__":
     CLI.add_argument(
         "--function",
         type=str,
-        default="evaluate",  
+        default="print_score",  
     )
     CLI.add_argument(
         "--num_vars",  
@@ -129,6 +134,12 @@ if __name__ == "__main__":
         type=int,
         default=1000,  
     )
+    CLI.add_argument(
+        "--method",
+        nargs="*",
+        type=str,
+        default=["walk_sat","novelty","novelty_plus","adaptive_novelty_plus"],  
+    )
     args = CLI.parse_args()
     
     if args.function=="generate":
@@ -141,10 +152,11 @@ if __name__ == "__main__":
                 print(f"_n_{n}_max_clause_length_{n}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}")
                 
     elif args.function=="learn":
-        for n,h,s,seed,c,context_seed,d in it.product(args.num_vars,args.num_hard,
+        for n,h,s,seed,c,context_seed,d,m in it.product(args.num_vars,args.num_hard,
                                          args.num_soft,args.model_seeds,
-                                         args.num_context,args.context_seeds,args.data_size):
-            learn_model(n,n,h,s,seed,c,context_seed,d)
+                                         args.num_context,args.context_seeds,
+                                         args.data_size,args.method):
+            learn_model(n,n,h,s,seed,c,context_seed,d,m)
     
     elif args.function=="evaluate":
         csvfile = open("results/evaluation"+ ".csv","w")
@@ -157,10 +169,10 @@ if __name__ == "__main__":
             param = f"_n_{n}_max_clause_length_{n}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
             pickle_var = pickle.load(open("pickles/target_model" + param + ".pickle", "rb"))
             target_model = pickle_var["true_model"]
-            for c,context_seed,d in it.product(args.num_context,
-                                               args.context_seeds,args.data_size):
+            for c,context_seed,d,m in it.product(args.num_context,args.context_seeds,
+                                                 args.data_size,args.method):
                 tag = param+f"_num_context_{c}_num_data_{d}_context_seed_{context_seed}"
-                pickle_var = pickle.load(open("pickles/learned_model" + tag + ".pickle", "rb"))
+                pickle_var = pickle.load(open("pickles/learned_model" + tag + "_" + m + ".pickle", "rb"))
                 learned_model = pickle_var["learned_model"]
                 time_taken=pickle_var["time_taken"]
                 score=pickle_var["score"]
@@ -172,6 +184,26 @@ if __name__ == "__main__":
                                      recall,precision,regret,time_taken])
 #        print(np.mean(scores),times_taken)
         csvfile.close()
+    elif args.function=="print_score":
+        for n,h,s,seed,c,context_seed,d in it.product(args.num_vars,args.num_hard,
+                                     args.num_soft,args.model_seeds,
+                                     args.num_context,args.context_seeds,
+                                     args.data_size):
+            
+            for m in args.method:
+                tag = f"_n_{n}_max_clause_length_{n}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}_{m}"
+                pickle_var = pickle.load(open("pickles/learned_model" + tag + ".pickle", "rb"))
+                learned_model = pickle_var["learned_model"]
+                time_taken=pickle_var["time_taken"]
+                best_scores=pickle_var["best_scores"]
+                plt.plot(range(len(best_scores)),best_scores,label=m)
+            plt.legend(loc="lower right")
+            plt.show()
+                
+                
+                
+                
+        
 
 
 
