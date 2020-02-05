@@ -131,8 +131,9 @@ def generate_model(num_vars, clause_length, num_hard, num_soft, rng):
     return list(generate_models(1, num_vars, clause_length, num_hard, num_soft, rng))[0]
 
 
-def generate_models( num_models, num_vars, clause_length, num_hard, 
-                    num_soft, rng ) -> List[MaxSatModel]:
+def generate_models(
+    num_models, num_vars, clause_length, num_hard, num_soft, rng
+) -> List[MaxSatModel]:
     clauses = _generate_all_clauses_up_to_length(num_vars, clause_length)
 
     if logger.isEnabledFor(logging.DEBUG):
@@ -162,6 +163,5 @@ def generate_models( num_models, num_vars, clause_length, num_hard,
         for i in hard_indices:
             model.append((None, set(clauses[i])))
         for i, weight in zip(soft_indices, weights):
-            model.append((weight/100, set(clauses[i])))
+            model.append((weight / 100, set(clauses[i])))
         yield model
-
