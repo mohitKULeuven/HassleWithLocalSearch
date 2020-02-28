@@ -227,18 +227,9 @@ def ternary(n, length):
 
 
 def learn_weighted_max_sat(
-    m: int,
-    data: np.ndarray,
-    labels: np.ndarray,
-    contexts: List[Clause],
-    method,
-    cutoff_score: int,
-    p=0.1,
-    wp=0.1,
-    theta=0.17,
-    phi=0.2,
-    cutoff_time=10,
-    seed=1,
+    m: int,data: np.ndarray,labels: np.ndarray,contexts: List[Clause],
+    method,cutoff_score: int,w,
+    p=0.1,wp=0.1,theta=0.17,phi=0.2,cutoff_time=5,seed=1
 ) -> MaxSatModel:
     """
     Learn a weighted MaxSAT model from examples. Contexts and clauses are set-encoded, i.e., they are represented by
@@ -264,9 +255,19 @@ def learn_weighted_max_sat(
     rng = np.random.RandomState(seed)
     c = [rng.randint(0, 2) for i in range(m)]
     w = [1 for i in range(m)]
-    random_clauses = [rng.randint(1, pow(3, data.shape[1])) for i in range(m)]
-    l = [ternary(i, data.shape[1]) for i in random_clauses]
-    l = [[-1 if j == 2 else j for j in clause] for clause in l]
+    
+    l=[]
+    i=1
+    while i <= m:
+        clause=[]
+        for _ in range(data.shape[1]):
+            clause.append(int(rng.choice([-1,0,1])))
+        if clause not in l:
+            l.append(clause)
+            i+=1
+#    random_clauses = [rng.randint(1, pow(3, data.shape[1])) for i in range(m)]
+#    l = [ternary(i, data.shape[1]) for i in random_clauses]
+#    l = [[-1 if j == 2 else j for j in clause] for clause in l]
 
     #    l=[[rng.choice([-1,0,1]) for j in range(data.shape[1])] for i in range(m)]
     model = MaxSAT.MaxSAT(c, w, l)
@@ -280,7 +281,7 @@ def learn_weighted_max_sat(
     time_taken = time.time() - start
 
     while score < cutoff_score and time.time() - start < cutoff_time:
-        neighbours = model.walk_sat_neighbours(data, labels, contexts, rng)
+        neighbours = model.walk_sat_neighbours(data, labels, contexts, rng,w)
         if len(neighbours) == 0:
             continue
         elif method != "walk_sat" and len(neighbours) < 2:
@@ -489,24 +490,28 @@ def example2():
     ]
 
     a, b, c, scores, best_scores = learn_weighted_max_sat(
-        3, data, labels, contexts, "walk_sat", 18
+        3, data, labels, contexts, "walk_sat", 18,cutoff_time=60
     )
+    print(a)
     plt.plot(range(len(best_scores)), best_scores, "r-", label="Walk_SAT")
 
     a, b, c, scores, best_scores = learn_weighted_max_sat(
-        3, data, labels, contexts, "novelty", 18
+        3, data, labels, contexts, "novelty", 18,cutoff_time=60
     )
+    print(a)
     plt.plot(range(len(best_scores)), best_scores, "g-", label="Novelty")
 
-    a, b, c, scores, best_scores = learn_weighted_max_sat(
-        3, data, labels, contexts, "novelty_plus", 18
-    )
-    plt.plot(range(len(best_scores)), best_scores, "b-", label="Novelty+")
-
-    a, b, c, scores, best_scores = learn_weighted_max_sat(
-        3, data, labels, contexts, "adaptive_novelty_plus", 18
-    )
-    plt.plot(range(len(best_scores)), best_scores, "y-", label="Adaptive_Novelty+")
+#    a, b, c, scores, best_scores = learn_weighted_max_sat(
+#        3, data, labels, contexts, "novelty_plus", 18
+#    )
+#    print(a)
+#    plt.plot(range(len(best_scores)), best_scores, "b-", label="Novelty+")
+#
+#    a, b, c, scores, best_scores = learn_weighted_max_sat(
+#        3, data, labels, contexts, "adaptive_novelty_plus", 18
+#    )
+#    print(a)
+#    plt.plot(range(len(best_scores)), best_scores, "y-", label="Adaptive_Novelty+")
 
     plt.legend(loc="lower right")
 

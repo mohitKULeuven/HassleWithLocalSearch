@@ -44,7 +44,7 @@ class MaxSAT:
         self.k = k
         self.n = n
 
-    def walk_sat_neighbours(self, data, labels, contexts, rng):
+    def walk_sat_neighbours(self, data, labels, contexts, rng,w):
         neighbours = []
         violated_examples = []
         index = 0
@@ -55,11 +55,11 @@ class MaxSAT:
         picked_example = data[index]
         val = get_value(self.maxSatModel(), picked_example, contexts[index])
         if not labels[index]:
-            neighbours = neighbours_pos(self, picked_example, contexts[index], rng)
+            neighbours = neighbours_pos(self, picked_example, contexts[index], rng,w)
         elif val is None:
             neighbours = neighbours_inf(self, picked_example, contexts[index], rng)
         else:
-            neighbours = neighbours_sub(self, picked_example, contexts[index], rng)
+            neighbours = neighbours_sub(self, picked_example, contexts[index], rng,w)
 
         return neighbours
 

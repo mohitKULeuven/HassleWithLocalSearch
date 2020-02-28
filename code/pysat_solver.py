@@ -21,7 +21,7 @@ def solve_weighted_max_sat(
     """
     Solves a MaxSatModel and tries to return num_sol optimal solutions
     """
-    #    print(n,model,context)
+#    print(n,model,context)
     c = WCNF()
     c.nv = n
     for w, clause in model:

@@ -29,7 +29,7 @@ def generate_contexts_and_data(n, model, num_context, num_data, param, context_s
     pickle_var["contexts"] = []
     pickle_var["data"] = []
     pickle_var["labels"] = []
-    pickle_var["learning_contexts"] = []
+#    pickle_var["learning_contexts"] = []
     for _ in range(num_context):
         context, data_seed = random_context(n, rng)
         data, labels = generate_data(n, model, context, num_data, data_seed)
@@ -44,16 +44,27 @@ def generate_contexts_and_data(n, model, num_context, num_data, param, context_s
 
 
 def random_context(n, rng):
-    random_index = rng.randint(1, pow(3, n))
-    clause = ternary(random_index, n)
-    clause = [-1 if j == 2 else j for j in clause]
-
+    clause=[]
+    for i in range(n):
+        clause.append(rng.choice([-1,0,1]))
     context = []
     for j, literal in enumerate(clause):
         if literal != 0:
             context.append((j + 1) * literal)
     data_seed = rng.randint(1, 1000)
     return context, data_seed
+
+#def random_context(n, rng):
+#    random_index = rng.randint(1, pow(3, n))
+#    clause = ternary(random_index, n)
+#    clause = [-1 if j == 2 else j for j in clause]
+#
+#    context = []
+#    for j, literal in enumerate(clause):
+#        if literal != 0:
+#            context.append((j + 1) * literal)
+#    data_seed = rng.randint(1, 1000)
+#    return context, data_seed
 
 
 def generate_data(n, model: MaxSatModel, context: Context, num_data, seed):
