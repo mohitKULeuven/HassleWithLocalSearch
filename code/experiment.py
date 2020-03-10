@@ -8,10 +8,12 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import json
+import time
 
-from generator import generate_models, generate_contexts_and_data, generate_data
+from generator import generate_models, generate_contexts_and_data
 from pysat_solver import solve_weighted_max_sat, get_value
 from local_search import learn_weighted_max_sat
+from milp_learner import learn_weighted_max_sat_MILP,label_instance
 # from dask import delayed
 
 
@@ -24,8 +26,19 @@ def learn_model(
 ):
 #    print(param)
     pickle_var = pickle.load(
-        open("pickles/contexts_and_data" + param + ".pickle", "rb")
+        open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
+    param += f"_method_{method}_cutoff_{cutoff}"
+    if w==0 and os.path.exists("pickles/bin_weight/learned_model" + param + ".pickle"):
+        pickle_var=pickle.load(
+                open("pickles/bin_weight/learned_model" + param + ".pickle", "rb")
+        )
+        return pickle_var["learned_model"], pickle_var["time_taken"]
+    elif w==1 and os.path.exists("pickles/con_weight/learned_model" + param + ".pickle"):
+        pickle_var=pickle.load(
+                open("pickles/con_weight/learned_model" + param + ".pickle", "rb")
+        )
+        return pickle_var["learned_model"], pickle_var["time_taken"]
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
     contexts = pickle_var["contexts"]
@@ -45,13 +58,62 @@ def learn_model(
     pickle_var["score"] = score
     pickle_var["scores"] = scores
     pickle_var["best_scores"] = best_scores
-    param += f"_method_{method}_cutoff_{cutoff}"
     if w==0:
         pickle.dump(pickle_var, open("pickles/bin_weight/learned_model" + param + ".pickle", "wb"))
     else:
-        pickle.dump(pickle_var, open("pickles/weighted/learned_model" + param + ".pickle", "wb"))
-    print(param + f"_method_{method}_cutoff_{cutoff}"+"\n")
+        pickle.dump(pickle_var, open("pickles/con_weight/learned_model" + param + ".pickle", "wb"))
+    print(param +"\n")
     return model, time_taken
+
+
+def learn_model_MILP(
+    n,
+    max_clause_length,
+    num_constraints,
+    method,
+    cutoff, param,w
+):
+#    print(param)
+    pickle_var = pickle.load(
+        open("pickles/contexts_and_data/" + param + ".pickle", "rb")
+    )
+    param += f"_method_{method}_cutoff_{cutoff}"
+    if os.path.exists("pickles/bin_weight/learned_model" + param + ".pickle"):
+        pickle_var=pickle.load(
+                open("pickles/bin_weight/learned_model" + param + ".pickle", "rb")
+        )
+        return pickle_var["learned_model"], pickle_var["time_taken"]
+   
+    data = np.array(pickle_var["data"])
+    labels = np.array(pickle_var["labels"])
+    contexts = pickle_var["contexts"]
+
+    start = time.time()
+    learned_model = learn_weighted_max_sat_MILP(
+        num_constraints,data,labels,contexts,cutoff
+    )
+    end = time.time()
+    
+    score = 0
+    if learned_model:
+        for k in range(data.shape[0]):
+            instance = data[k, :]
+            label = labels[k]
+            learned_label = label_instance(
+                learned_model, instance, contexts[k]
+            )
+            if label != learned_label:
+                score += 1
+
+
+    pickle_var["learned_model_MILP"] = learned_model
+    pickle_var["time_taken"] = end-start
+    pickle_var["score"] = score
+    
+    pickle.dump(pickle_var, open("pickles/bin_weight/learned_model" + param + ".pickle", "wb"))
+    print(param +"\n")
+    return learned_model, end-start
+
 
 
 def evaluate_statistics(n, target_model, learned_model, sample_size):
@@ -102,7 +164,7 @@ def generate(args):
     for n, h, s, seed in it.product(
         args.num_vars, args.num_hard, args.num_soft, args.model_seeds
     ):
-        model, param = generate_models(n, n, h, s, seed)
+        model, param = generate_models(n, int(n/2), h, s, seed)
 
         for c, context_seed, d in it.product(
             args.num_context, args.context_seeds, args.data_size
@@ -116,11 +178,18 @@ def learn(args):
         args.num_context,args.context_seeds,args.data_size,args.method,
         args.cutoff,
     ):
-        try:
-            param = f"_n_{n}_max_clause_length_{n}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}"
-            learn_model(n, n, h + s, m, t, param)
-        except FileNotFoundError:
-            continue
+        if m=="MILP":
+            try:
+                param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}"
+                learn_model_MILP(n, n, h + s, m, t, param)
+            except FileNotFoundError:
+                continue
+        else:
+            try:
+                param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}"
+                learn_model(n, n, h + s, m, t, param,args.weighted)
+            except FileNotFoundError:
+                continue
 
 def evaluate(args):
     folder_name=datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)")
@@ -139,9 +208,9 @@ def evaluate(args):
     for n, h, s, seed in it.product(
         args.num_vars, args.num_hard, args.num_soft, args.model_seeds
     ):
-        param = f"_n_{n}_max_clause_length_{n}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
+        param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
         pickle_var = pickle.load(
-            open("pickles/target_model" + param + ".pickle", "rb")
+            open("pickles/target_model/" + param + ".pickle", "rb")
         )
         target_model = pickle_var["true_model"]
         for c, context_seed, d, m, t in it.product(
@@ -159,7 +228,7 @@ def evaluate(args):
             else:
                 
                 pickle_var = pickle.load(
-                    open("pickles/weighted/learned_model" + tag + ".pickle", "rb")
+                    open("pickles/con_weight/learned_model" + tag + ".pickle", "rb")
                 )
             learned_model = pickle_var["learned_model"]
 #            print(target_model)
@@ -197,7 +266,7 @@ def avg_training_score(args):
                         )
                     else:
                         pickle_var = pickle.load(
-                            open("pickles/weighted/learned_model" + tag + ".pickle", "rb")
+                            open("pickles/con_weight/learned_model" + tag + ".pickle", "rb")
                         )
                     score.append(pickle_var["score"])
                 except FileNotFoundError:
@@ -207,42 +276,54 @@ def avg_training_score(args):
                 print(f"method:{method} time:{t} score:{avg}")
 
 def save_training_score_plot(args):
-    for n, h, s, seed, c, context_seed, d in it.product(
-        args.num_vars, args.num_hard, args.num_soft,args.model_seeds,
-        args.num_context,args.context_seeds,args.data_size
-    ):
-        fig,ax=plt.subplots()
-        plt.ylabel('Accuracy (Training Data)')
-        plt.xlabel('cutoff time (in seconds)')
-        plt.ylim(0,100)
-        sav=0
-        for method in args.method:
+    fig,ax=plt.subplots()
+    plt.rcParams.update({'font.size': 15})
+    plt.ylabel('Accuracy (Training Data)')
+    plt.xlabel('cutoff time (in seconds)')
+    plt.ylim(60,100)
+    for method in args.method:
+        avg_score = []
+        for n, h, s, seed, c, context_seed, d in it.product(
+            args.num_vars, args.num_hard, args.num_soft,args.model_seeds,
+            args.num_context,args.context_seeds,args.data_size
+        ):
             score = []
-            cutoff_time = []
+#            cutoff_time = []
             for t in args.cutoff:
+                
                 try:
-                    tag = f"_n_{n}_max_clause_length_{n}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}_method_{method}_cutoff_{t}"
+                    tag = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}_method_{method}_cutoff_{t}"
                     if args.weighted==0:
                         pickle_var = pickle.load(
                             open("pickles/bin_weight/learned_model" + tag + ".pickle", "rb")
                         )
                     else:
                         pickle_var = pickle.load(
-                            open("pickles/weighted/learned_model" + tag + ".pickle", "rb")
+                            open("pickles/con_weight/learned_model" + tag + ".pickle", "rb")
                         )
                     score.append(pickle_var["score"])
-                    cutoff_time.append(t)
+#                    cutoff_time.append(t)
                 except FileNotFoundError:
                     continue
             if score:
-                print(cutoff_time, score)
-                plt.plot(cutoff_time, score, label=method)
-                plt.legend(loc="lower right")
-                plt.draw()
-                sav=1
-        tag = f"results/_n_{n}_max_clause_length_{n}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}_w_{args.weighted}.png"
-        if sav==1:
-            fig.savefig(tag)
+                avg_score.append(score)
+#                print(method, score)
+#                plt.plot(cutoff_time, score, label=method)
+#                plt.legend(loc="lower right")
+#                plt.draw()
+#                sav=1
+        avg_score=np.array(avg_score)
+        y=np.average(avg_score,axis=0)
+#        y_err=[elem/np.sqrt(len(avg_score[i])) for i,elem in enumerate(np.std(avg_score,axis=0))]
+        print(method,y)
+#        plt.errorbar(args.cutoff, np.average(avg_score,axis=0), 
+#                     yerr=np.std(avg_score,axis=0), label=method)
+        plt.plot(args.cutoff, np.average(avg_score,axis=0), label=method)
+#        plt.fill_between(args.cutoff, y-y_err, y+y_err,alpha=0.3)
+        plt.legend(loc="lower right")
+        plt.draw()
+    tag = f"results/synthetic_evaluation_over_score_neg.png"
+    fig.savefig(tag)
 
 
 
@@ -292,3 +373,6 @@ if __name__ == "__main__":
         
     elif args.function == "print_score":
         avg_training_score(args)
+
+    elif args.function == "plot_score":
+        save_training_score_plot(args)

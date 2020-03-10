@@ -131,7 +131,8 @@ def evaluate(args):
     filewriter.writerow(
         [
             "num_vars","num_hard","num_soft","model_seed",
-            "num_context","context_seed","data_size","method",
+            "num_context","context_seed","data_size",
+            "pos_per_context","neg_per_context","method",
             "score","recall","precision","regret","time_taken","cutoff"
         ]
     )
@@ -155,7 +156,7 @@ def evaluate(args):
                         )
                     else:
                         pickle_var = pickle.load(
-                            open("pickles/weighted/learned_model" + tag + ".pickle", "rb")
+                            open("pickles/con_weight/learned_model" + tag + ".pickle", "rb")
                         )
                     learned_model = pickle_var["learned_model"]
                     time_taken = pickle_var["time_taken"]
@@ -163,10 +164,13 @@ def evaluate(args):
                     recall, precision, regret = evaluate_statistics(
                         n, target_model, learned_model, args.sample_size
                     )
+                    pos_per_context=pickle_var["labels"].count(True)/c
+                    neg_per_context=pickle_var["labels"].count(False)/c
                     print(n, m-num_soft, num_soft, d, score, recall, 
                           precision, regret,time_taken)
                     filewriter.writerow(
-                            [n,m-num_soft,num_soft,seed,c,context_seed,d,method,
+                            [n,m-num_soft,num_soft,seed,c,context_seed,d,
+                             pos_per_context,neg_per_context,method,
                              score,recall,precision,regret,time_taken,t]
                     )
     csvfile.close()
@@ -189,7 +193,7 @@ def avg_training_score(args):
                                 )
                             else:
                                 pickle_var = pickle.load(
-                                    open("pickles/weighted/learned_model" + tag + ".pickle", "rb")
+                                    open("pickles/con_weight/learned_model" + tag + ".pickle", "rb")
                                 )
                             score.append(pickle_var["score"])
                         except FileNotFoundError:
@@ -199,20 +203,20 @@ def avg_training_score(args):
                 print(f"method:{method} time:{t} score:{avg}")
 
 def save_training_score_plot(args):
-    for s, seed, c, context_seed, d in it.product(
-        args.per_soft,args.model_seeds,args.num_context,
-        args.context_seeds,args.data_size
-    ):
-        for cnf_file in os.listdir(args.path):
-            if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
-                fig,ax=plt.subplots()
-                plt.ylabel('Accuracy (Training Data)')
-                plt.xlabel('cutoff time (in seconds)')
-                plt.ylim(0,100)
-                sav=0
-                for method in args.method:
+    fig,ax=plt.subplots()
+    plt.rcParams.update({'font.size': 15})
+    plt.ylabel('Accuracy (Training Data)')
+    plt.xlabel('cutoff time (in seconds)')
+    plt.ylim(0,100)
+    for method in args.method:
+        avg_score = []
+        for s, seed, c, context_seed, d in it.product(
+            args.per_soft,args.model_seeds,args.num_context,
+            args.context_seeds,args.data_size
+        ):
+            for cnf_file in os.listdir(args.path):
+                if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
                     score = []
-                    cutoff_time = []
                     for t in args.cutoff:
                         try:
                             tag = f"_{cnf_file}_per_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}_method_{method}_cutoff_{t}"
@@ -222,21 +226,23 @@ def save_training_score_plot(args):
                                 )
                             else:
                                 pickle_var = pickle.load(
-                                    open("pickles/weighted/learned_model" + tag + ".pickle", "rb")
+                                    open("pickles/con_weight/learned_model" + tag + ".pickle", "rb")
                                 )
                             score.append(pickle_var["score"])
-                            cutoff_time.append(t)
                         except FileNotFoundError:
                             continue
                     if score:
-                        print(cutoff_time, score)
-                        plt.plot(cutoff_time, score, label=method)
-                        plt.legend(loc="lower right")
-                        plt.draw()
-                        sav=1
-                tag = f"results/{cnf_file}_per_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}_w_{args.weighted}.png"
-                if sav==1:
-                    fig.savefig(tag)
+                        avg_score.append(score)
+        avg_score=np.array(avg_score)
+        y=np.average(avg_score,axis=0)
+#        y_err=[elem/np.sqrt(len(avg_score[i])) for i,elem in enumerate(np.std(avg_score,axis=0))]
+        print(method,y)
+        plt.plot(args.cutoff, np.average(avg_score,axis=0), label=method)
+#        plt.fill_between(args.cutoff, y-y_err, y+y_err,alpha=0.3)
+        plt.legend(loc="upper left")
+        plt.draw()
+    tag = f"results/benchmark_evaluation_over_score.png"
+    fig.savefig(tag)
             
 
 logger = logging.getLogger(__name__)
@@ -248,7 +254,7 @@ if __name__ == "__main__":
     CLI.add_argument(
         "--model_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
     )
-    CLI.add_argument("--num_context", nargs="*", type=int, default=[5,25,50])
+    CLI.add_argument("--num_context", nargs="*", type=int, default=[25,50])
     CLI.add_argument(
         "--context_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
     )

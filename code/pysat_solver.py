@@ -116,7 +116,7 @@ def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> 
     best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
     #    print(model, best_instance)
     best_value = get_value(model, best_instance)
-    return value >= best_value
+    return value == best_value
 
 
 def represent_int(s):

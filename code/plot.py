@@ -11,12 +11,14 @@ import numpy as np
 import argparse
 import pandas as pd
 
+plt.rcParams.update({'font.size': 15})
+
 CLI = argparse.ArgumentParser()
 CLI.add_argument(
     "--aggregate",  # name on the CLI - drop the `--` for positional/required parameters
     nargs="*",  # 0 or more values expected => creates a list
     type=str,
-    default=[ "precision","recall","regret",]  # default if nothing is provided
+    default=[ "precision","recall","regret"]  # default if nothing is provided
 )
 CLI.add_argument(
     "--aggregate_over",  
@@ -27,7 +29,7 @@ CLI.add_argument(
 CLI.add_argument(
     "--folder",  
     type=str,
-    default="results/26-02-20 (14:33:20.511289)",  
+    default="results/04-03-20 (23:38:43.426535)/",  
 )
 CLI.add_argument(
     "--file",  
@@ -37,7 +39,7 @@ CLI.add_argument(
 
 args = CLI.parse_args()
 
-result_file = args.folder + "/" + args.file + ".csv"
+result_file = args.folder + args.file + ".csv"
 
 data = pd.read_csv(result_file)
 data[["regret"]] = data[["regret"]].replace(-1,np.nan)
@@ -63,10 +65,12 @@ std_table = std_table.T
 print(mean_table)
 fig, ax = plt.subplots(1, 1, figsize=(6, 3.5))
 mean_table.plot.bar(rot=0, ax=ax, yerr=std_table, align="center", width=0.8)
-ax.legend(title="$\hat{s}^+,s^-$", fontsize="large", ncol=1)
+#ax.legend(title="$\hat{s}^+,s^-$", fontsize="large", ncol=1)
+ax.legend(title=args.aggregate_over, fontsize="large", ncol=1)
 #plt.xticks(
 #    np.arange(4), ["precision", "regret"]
 #)
-#plt.savefig("plots/" + args.file + ".png", bbox_inches="tight", pad_inches=0)
+plt.ylim(0,100)
+plt.savefig(args.folder + "synthetic_"+ args.file + "_over_"+args.aggregate_over[0]+".png", bbox_inches="tight", pad_inches=0)
 plt.show()
 
