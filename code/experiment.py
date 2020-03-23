@@ -10,10 +10,12 @@ import os
 import json
 import time
 
+from type_def import MaxSatModel, Context, Clause
 from generator import generate_models, generate_contexts_and_data
-from pysat_solver import solve_weighted_max_sat, get_value
+from pysat_solver import solve_weighted_max_sat, get_value, label_instance
 from local_search import learn_weighted_max_sat
-from milp_learner import learn_weighted_max_sat_MILP,label_instance
+from milp_learner import learn_weighted_max_sat_MILP
+from verify import get_recall_precision
 # from dask import delayed
 
 
@@ -29,21 +31,21 @@ def learn_model(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
     param += f"_method_{method}_cutoff_{cutoff}"
-    if w==0 and os.path.exists("pickles/bin_weight/learned_model" + param + ".pickle"):
-        pickle_var=pickle.load(
-                open("pickles/bin_weight/learned_model" + param + ".pickle", "rb")
-        )
-        return pickle_var["learned_model"], pickle_var["time_taken"]
-    elif w==1 and os.path.exists("pickles/con_weight/learned_model" + param + ".pickle"):
-        pickle_var=pickle.load(
-                open("pickles/con_weight/learned_model" + param + ".pickle", "rb")
-        )
-        return pickle_var["learned_model"], pickle_var["time_taken"]
+#    if w==0 and os.path.exists("pickles/bin_weight/learned_model" + param + ".pickle"):
+#        pickle_var=pickle.load(
+#                open("pickles/bin_weight/learned_model" + param + ".pickle", "rb")
+#        )
+#        return pickle_var["learned_model"], pickle_var["time_taken"]
+#    elif w==1 and os.path.exists("pickles/con_weight/learned_model" + param + ".pickle"):
+#        pickle_var=pickle.load(
+#                open("pickles/con_weight/learned_model" + param + ".pickle", "rb")
+#        )
+#        return pickle_var["learned_model"], pickle_var["time_taken"]
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
     contexts = pickle_var["contexts"]
 
-    model, score, time_taken, scores, best_scores = learn_weighted_max_sat(
+    model, score, time_taken, scores, best_scores,iterations = learn_weighted_max_sat(
         num_constraints,
         data,
         labels,
@@ -58,6 +60,7 @@ def learn_model(
     pickle_var["score"] = score
     pickle_var["scores"] = scores
     pickle_var["best_scores"] = best_scores
+    pickle_var["iterations"] = iterations
     if w==0:
         pickle.dump(pickle_var, open("pickles/bin_weight/learned_model" + param + ".pickle", "wb"))
     else:
@@ -71,18 +74,19 @@ def learn_model_MILP(
     max_clause_length,
     num_constraints,
     method,
-    cutoff, param,w
+    cutoff, param
 ):
 #    print(param)
     pickle_var = pickle.load(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
     param += f"_method_{method}_cutoff_{cutoff}"
-    if os.path.exists("pickles/bin_weight/learned_model" + param + ".pickle"):
-        pickle_var=pickle.load(
-                open("pickles/bin_weight/learned_model" + param + ".pickle", "rb")
-        )
-        return pickle_var["learned_model"], pickle_var["time_taken"]
+#    if os.path.exists("pickles/bin_weight/learned_model" + param + ".pickle"):
+#        pickle_var=pickle.load(
+#                open("pickles/bin_weight/learned_model" + param + ".pickle", "rb")
+#        )
+#        print(param +": "+str(pickle_var["score"])+"\n")
+#        return pickle_var["learned_model_MILP"], pickle_var["time_taken"]
    
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
@@ -102,31 +106,45 @@ def learn_model_MILP(
             learned_label = label_instance(
                 learned_model, instance, contexts[k]
             )
-            if label != learned_label:
+            if label == learned_label:
                 score += 1
 
 
-    pickle_var["learned_model_MILP"] = learned_model
+    pickle_var["learned_model"] = learned_model
     pickle_var["time_taken"] = end-start
-    pickle_var["score"] = score
+    pickle_var["score"] = score * 100 / data.shape[0]
     
     pickle.dump(pickle_var, open("pickles/bin_weight/learned_model" + param + ".pickle", "wb"))
-    print(param +"\n")
+    print(param +": "+str(pickle_var["score"])+"\n")
     return learned_model, end-start
 
 
 
-def evaluate_statistics(n, target_model, learned_model, sample_size):
-    sample_target_model,cst = solve_weighted_max_sat(n, target_model, [], sample_size)
-#    sample_target_model,labels = generate_data(n, target_model, [], sample_size, seed)
-#    print(sample_target_model)
-#    return
-    recall = eval_recall(n, sample_target_model, learned_model)
-    sample_learned_model,cst = solve_weighted_max_sat(n, learned_model, [], sample_size)
-    precision, regret = eval_precision_regret(
-        n, sample_learned_model, target_model, learned_model
-    )
-    return recall, precision, regret
+#def evaluate_statistics(n, target_model, learned_model, sample_size):
+#    sample_target_model,cst = solve_weighted_max_sat(n, target_model, [], sample_size)
+##    sample_target_model,labels = generate_data(n, target_model, [], sample_size, seed)
+##    print(sample_target_model)
+##    return
+#    recall = eval_recall(n, sample_target_model, learned_model)
+#    sample_learned_model,cst = solve_weighted_max_sat(n, learned_model, [], sample_size)
+#    precision, regret = eval_precision_regret(
+#        n, sample_learned_model, target_model, learned_model
+#    )
+#    return recall, precision, regret
+
+def evaluate_statistics(n, target_model:MaxSatModel, learned_model:MaxSatModel, context:Context):
+    recall, precision, accuracy=get_recall_precision(n, target_model, learned_model, context)
+#    print(learned_model)
+#    print("\n",context)
+    learned_sol, cost = solve_weighted_max_sat(n, learned_model, context, 1)
+    learned_opt_val = get_value(target_model, learned_sol)
+
+    sol, cost = solve_weighted_max_sat(n, target_model, context, 1)
+    opt_val = get_value(target_model, sol)
+
+    regret = (opt_val - learned_opt_val)* 100 / opt_val if learned_opt_val else -1
+    
+    return recall, precision, accuracy, regret
 
 
 def eval_recall(n, sample, model):
@@ -202,7 +220,8 @@ def evaluate(args):
         [
             "num_vars","num_hard","num_soft","model_seed","num_context",
             "context_seed","data_size","pos_per_context","neg_per_context",
-            "method","score","recall","precision","regret","time_taken","cutoff"
+            "method","score","recall","precision","accuracy",
+            "f1_score","regret","time_taken","cutoff"
         ]
     )
     for n, h, s, seed in it.product(
@@ -221,31 +240,40 @@ def evaluate(args):
                 param
                 + f"_num_context_{c}_num_data_{d}_context_seed_{context_seed}_method_{m}_cutoff_{t}"
             )
-            if args.weighted==0:
+            if m=="MILP":
                 pickle_var = pickle.load(
                     open("pickles/bin_weight/learned_model" + tag + ".pickle", "rb")
                 )
+                learned_model = pickle_var["learned_model_MILP"]
             else:
-                
                 pickle_var = pickle.load(
                     open("pickles/con_weight/learned_model" + tag + ".pickle", "rb")
                 )
-            learned_model = pickle_var["learned_model"]
+                learned_model = pickle_var["learned_model"]
 #            print(target_model)
 #            print(learned_model)
             time_taken = pickle_var["time_taken"]
             score = pickle_var["score"]
-            recall, precision, regret = evaluate_statistics(
-                n, target_model, learned_model, args.sample_size
+            contexts=pickle_var["contexts"]
+            global_context=set()
+            for context in contexts:
+                global_context.update(context)
+            recall, precision, accuracy, regret = evaluate_statistics(
+                n, target_model, learned_model,global_context
             )
+            f1_score = 2*recall*precision/(recall+precision)
 #            return
-            pos_per_context=pickle_var["labels"].count(True)/c
-            neg_per_context=pickle_var["labels"].count(False)/c
+            if c==0:
+                pos_per_context=pickle_var["labels"].count(True)
+                neg_per_context=pickle_var["labels"].count(False)
+            else:
+                pos_per_context=pickle_var["labels"].count(True)/c
+                neg_per_context=pickle_var["labels"].count(False)/c
             print(n, h, s, d, score, recall, precision, regret)
             filewriter.writerow(
                 [
                     n,h,s,seed,c,context_seed,d,pos_per_context,neg_per_context,
-                    m,score,recall,precision,regret,time_taken,t
+                    m,score,recall,precision,accuracy,f1_score,regret,time_taken,t
                 ]
             )
     csvfile.close()
@@ -280,7 +308,7 @@ def save_training_score_plot(args):
     plt.rcParams.update({'font.size': 15})
     plt.ylabel('Accuracy (Training Data)')
     plt.xlabel('cutoff time (in seconds)')
-    plt.ylim(60,100)
+    plt.ylim(70,100)
     for method in args.method:
         avg_score = []
         for n, h, s, seed, c, context_seed, d in it.product(
@@ -322,7 +350,7 @@ def save_training_score_plot(args):
 #        plt.fill_between(args.cutoff, y-y_err, y+y_err,alpha=0.3)
         plt.legend(loc="lower right")
         plt.draw()
-    tag = f"results/synthetic_evaluation_over_score_neg.png"
+    tag = f"results/synthetic_evaluation_over_methods.png"
     fig.savefig(tag)
 
 
@@ -355,7 +383,7 @@ if __name__ == "__main__":
         type=str,
         default=["walk_sat", "novelty", "novelty_plus", "adaptive_novelty_plus"],
     )
-    CLI.add_argument("--cutoff", nargs="*", type=int, default=[2, 10, 60])
+    CLI.add_argument("--cutoff", nargs="*", type=int, default=[50, 100, 500])
     CLI.add_argument("--weighted", type=int, default=1)
     
     args = CLI.parse_args()

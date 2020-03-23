@@ -25,7 +25,7 @@ def solve_weighted_max_sat(
     c = WCNF()
     c.nv = n
     for w, clause in model:
-        c.append(list(clause), weight=w)
+        c.append(list(map(int, list(clause))), weight=w)
     if len(context) > 0:
         c.append(list(map(int, list(context))), weight=None)
     s = RC2(c)

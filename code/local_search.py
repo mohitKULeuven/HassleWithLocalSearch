@@ -228,7 +228,7 @@ def ternary(n, length):
 
 def learn_weighted_max_sat(
     m: int,data: np.ndarray,labels: np.ndarray,contexts: List[Clause],
-    method,cutoff_score: int,w,
+    method,cutoff_score: int, w,
     p=0.1,wp=0.1,theta=0.17,phi=0.2,cutoff_time=5,seed=1
 ) -> MaxSatModel:
     """
@@ -258,6 +258,7 @@ def learn_weighted_max_sat(
     
     l=[]
     i=1
+#    print(data.shape)
     while i <= m:
         clause=[]
         for _ in range(data.shape[1]):
@@ -279,8 +280,9 @@ def learn_weighted_max_sat(
     solution = model.deep_copy()
     best_score = score
     time_taken = time.time() - start
-
+    iterations=0
     while score < cutoff_score and time.time() - start < cutoff_time:
+#    while score < cutoff_score and iterations < cutoff_time:
         neighbours = model.walk_sat_neighbours(data, labels, contexts, rng,w)
         if len(neighbours) == 0:
             continue
@@ -330,6 +332,7 @@ def learn_weighted_max_sat(
             best_score = score
             time_taken = time.time() - start
         best_scores.append(best_score)
+        iterations+=1
     #        break
 
     #    print(f"time taken: {time_taken} seconds")
@@ -337,5 +340,5 @@ def learn_weighted_max_sat(
     print("Final Score: ", score_percentage)
     #    print(solution.maxSatModel(),best_score,best_score*100/data.shape[0])
 
-    return solution.maxSatModel(), score_percentage, time_taken, scores, best_scores
+    return solution.maxSatModel(), score_percentage, time_taken, scores, best_scores,iterations
 

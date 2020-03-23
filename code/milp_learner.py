@@ -4,8 +4,8 @@ from typing import List
 
 import numpy as np
 
-from .solve import solve_weighted_max_sat, get_value
-from .type_def import MaxSatModel, Clause, suppress_stdout, Instance, Context
+from pysat_solver import solve_weighted_max_sat, get_value
+from type_def import MaxSatModel, Clause, suppress_stdout, Instance, Context
 from gurobipy import Model, GRB, quicksum
 
 
@@ -423,12 +423,12 @@ def learn_weighted_max_sat_MILP(
     else:
         pass
 
-
-def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> bool:
-    value = get_value(model, instance)
-    if value is None:
-        return False
-    best_instance = solve_weighted_max_sat(len(instance), model, context, 1)
-    best_value = get_value(model, best_instance)
-    logger.debug(f"Best instance: {best_value} - {best_instance}")
-    return value >= best_value
+#
+#def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> bool:
+#    value = get_value(model, instance)
+#    if value is None:
+#        return False
+#    best_instance = solve_weighted_max_sat(len(instance), model, context, 1)
+#    best_value = get_value(model, best_instance)
+#    logger.debug(f"Best instance: {best_value} - {best_instance}")
+#    return value >= best_value

@@ -9,21 +9,20 @@ from type_def import MaxSatModel, Context, Clause
 
 
 def find_solutions_rec(weights, selected, available, budget):
-    if budget == 0:
+    if budget <= min(weights)/10:
         yield selected
 
     for i in available:
         s = selected | {i}
         b = budget - weights[i]
-        a = {j for j in available if j > i and weights[j] <= b}
+        a = [j for j in available if j > i and weights[j] <= b+min(weights)/10]
         yield from find_solutions_rec(weights, s, a, b)
 
 
 def find_weight_assignments(weights, budget):
     weights = np.array(weights)
     selected = set()
-    available = {i for i in range(len(weights)) if weights[i] <= budget}
-
+    available = [i for i in range(len(weights)) if weights[i] <= budget]
     return find_solutions_rec(weights, selected, available, budget)
 
 
@@ -43,9 +42,9 @@ def get_sdd_manager(n: int):
 
 
 def convert_to_logic(manager: SddManager, n: int, model: MaxSatModel, context: Context):
-    best_solution, value = solve_weighted_max_sat(n, model, context, 1)
+    best_solution, cst = solve_weighted_max_sat(n, model, context, 1)
 
-    if value is -1:
+    if cst is -1:
         return None
     else:
         value = get_value(model, best_solution, context)
@@ -84,9 +83,18 @@ def get_recall_precision(n: int, true_model: MaxSatModel, learned_model: MaxSatM
     true_logic = convert_to_logic(manager, n, true_model, context)
     learned_logic = convert_to_logic(manager, n, learned_model, context)
     combined = true_logic & learned_logic
-
+    
     true_count, learned_count, combined_count = (l.global_model_count() for l in (true_logic, learned_logic, combined))
-    return combined_count / true_count, combined_count / learned_count
+#    print(true_count, learned_count, combined_count)
+#    learned_sol, cost = solve_weighted_max_sat(n, true_model, set(), pow(2,n))
+#    print(len(learned_sol))
+#    learned_sol, cost = solve_weighted_max_sat(n, learned_model, set(), pow(2,n))
+#    print(len(learned_sol))
+    TN=pow(2,n)-(true_count+learned_count-combined_count)
+    accuracy=(TN+combined_count)*100/pow(2,n)
+    recall=combined_count*100 / true_count
+    precision=combined_count*100 / learned_count
+    return recall, precision, accuracy
 
 
 def simple():
