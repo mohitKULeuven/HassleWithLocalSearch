@@ -28,11 +28,16 @@ def solve_weighted_max_sat(
         c.append(list(map(int, list(clause))), weight=w)
     if len(context) > 0:
         c.append(list(map(int, list(context))), weight=None)
+#    print(c.nv)
     s = RC2(c)
     sol = []
     cst = -1
 
     for m in s.enumerate():
+        while len(m)<n:
+            m.append(len(m)+1)
+            
+#        print(m)
         if cst < 0:
             cst = s.cost
         if s.cost > cst or len(sol) >= num_sol:

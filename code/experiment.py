@@ -244,12 +244,11 @@ def evaluate(args):
                 pickle_var = pickle.load(
                     open("pickles/bin_weight/learned_model" + tag + ".pickle", "rb")
                 )
-                learned_model = pickle_var["learned_model_MILP"]
             else:
                 pickle_var = pickle.load(
                     open("pickles/con_weight/learned_model" + tag + ".pickle", "rb")
                 )
-                learned_model = pickle_var["learned_model"]
+            learned_model = pickle_var["learned_model"]
 #            print(target_model)
 #            print(learned_model)
             time_taken = pickle_var["time_taken"]
@@ -258,9 +257,11 @@ def evaluate(args):
             global_context=set()
             for context in contexts:
                 global_context.update(context)
-            recall, precision, accuracy, regret = evaluate_statistics(
-                n, target_model, learned_model,global_context
-            )
+            recall, precision, accuracy, regret=-1,-1,-1,-1
+            if learned_model:
+                recall, precision, accuracy, regret = evaluate_statistics(
+                    n, target_model, learned_model,global_context
+                )
             f1_score = 2*recall*precision/(recall+precision)
 #            return
             if c==0:
@@ -308,7 +309,7 @@ def save_training_score_plot(args):
     plt.rcParams.update({'font.size': 15})
     plt.ylabel('Accuracy (Training Data)')
     plt.xlabel('cutoff time (in seconds)')
-    plt.ylim(70,100)
+#    plt.ylim(70,100)
     for method in args.method:
         avg_score = []
         for n, h, s, seed, c, context_seed, d in it.product(
@@ -321,7 +322,7 @@ def save_training_score_plot(args):
                 
                 try:
                     tag = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_data_{d}_context_seed_{context_seed}_method_{method}_cutoff_{t}"
-                    if args.weighted==0:
+                    if method=="MILP":
                         pickle_var = pickle.load(
                             open("pickles/bin_weight/learned_model" + tag + ".pickle", "rb")
                         )
