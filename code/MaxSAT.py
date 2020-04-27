@@ -11,6 +11,7 @@ import copy
 from type_def import MaxSatModel
 from pysat_solver import solve_weighted_max_sat, get_value
 from walk_sat_neighbours import neighbours_inf, neighbours_pos, neighbours_sub
+import time
 
 
 class MaxSAT:
@@ -20,8 +21,6 @@ class MaxSAT:
         self.l = l  # tells wether a literal j is present in clause i
         self.k = len(l)  # number of clauses
         self.n = len(l[0])  # number of variables
-
-    #        self.clauses=self.get_clauses(l)
 
     def from_max_sat_model(self, n: int, model: MaxSatModel):
         k = len(model)
@@ -44,22 +43,31 @@ class MaxSAT:
         self.k = k
         self.n = n
 
-    def walk_sat_neighbours(self, data, labels, contexts, rng,w):
+    def walk_sat_neighbours(self, data, labels, contexts, rng, w):
+        x = list(enumerate(data))
+        rng.shuffle(x)
+        indices, data = zip(*x)
+
         neighbours = []
-        violated_examples = []
         index = 0
         for i, example in enumerate(data):
-            if not self.is_correct(example, labels[i], contexts[i]):
-                violated_examples.append(i)
-        index = rng.choice(violated_examples)
+            if not self.is_correct(example, labels[indices[i]], contexts[indices[i]]):
+                index = i
+                break
         picked_example = data[index]
-        val = get_value(self.maxSatModel(), picked_example, contexts[index])
-        if not labels[index]:
-            neighbours = neighbours_pos(self, picked_example, contexts[index], rng,w)
+        val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
+        if not labels[indices[index]]:
+            neighbours = neighbours_pos(
+                self, picked_example, contexts[indices[index]], rng, w
+            )
         elif val is None:
-            neighbours = neighbours_inf(self, picked_example, contexts[index], rng)
+            neighbours = neighbours_inf(
+                self, picked_example, contexts[indices[index]], rng
+            )
         else:
-            neighbours = neighbours_sub(self, picked_example, contexts[index], rng,w)
+            neighbours = neighbours_sub(
+                self, picked_example, contexts[indices[index]], rng, w
+            )
 
         return neighbours
 
@@ -87,7 +95,6 @@ class MaxSAT:
 
     def random_neighbour(self, rng):
         neighbour = self.deep_copy()
-        #        np.random.seed(seed)
         random_clause = rng.randint(0, neighbour.k)
         random_vector = rng.randint(0, 2)
         if random_vector == 0:
@@ -116,12 +123,35 @@ class MaxSAT:
                 correct_examples[i] = 1
         return score, correct_examples
 
-    def is_correct(self, example, label, context=[]):
+    def is_correct(self, example, label, context=[], optimum=-1):
         val = get_value(self.maxSatModel(), example, context)
         if val is None:
             return not label
         else:
+            if optimum == -1:
+                optimum = self.optimal_value(context)
+            if val == optimum and label:
+                return True
+            elif not optimum and not label:
+                return True
+            elif not optimum and label:
+                return False
+            elif val < optimum and not label:
+                return True
+        return False
+
+    def is_corrects(self, example, label, context=[]):
+        get_val_time = time.time()
+        print("\n getting val")
+        val = get_value(self.maxSatModel(), example, context)
+        print("val_time: ", time.time() - get_val_time)
+        if val is None:
+            return not label
+        else:
+            get_opt_time = time.time()
+            print("getting opt")
             optimum = self.optimal_value(context)
+            print("opt_time: ", time.time() - get_opt_time)
             if val == optimum and label:
                 return True
             if val < optimum and not label:
@@ -159,10 +189,6 @@ class MaxSAT:
         if context:
             model.append((None, context))
         return get_value(model, sol)
-
-    #        if sol:
-    #            return self.evaluate(sol[0],context)
-    #        return 0
 
     def is_same(self, model):
         c1, w1, l1 = zip(*sorted(zip(self.c, self.w, self.l)))

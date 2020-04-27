@@ -4,8 +4,7 @@ from typing import List
 
 import numpy as np
 
-from pysat_solver import solve_weighted_max_sat, get_value
-from type_def import MaxSatModel, Clause, suppress_stdout, Instance, Context
+from type_def import MaxSatModel, Clause, suppress_stdout
 from gurobipy import Model, GRB, quicksum
 
 
@@ -363,9 +362,9 @@ def learn_weighted_max_sat_MILP(
     #         mod.addConstr(cov_k[k] + opt_k[k] >= 2, name=f"cov_{k} + opt_{k} >= 2")
     #     else:
     #         mod.addConstr(cov_k[k] + opt_k[k] <= 1, name=f"cov_{k} + opt_{k} <= 1")
-    if cutoff>0:
-        mod.Params.timeLimit=cutoff
-        
+    if cutoff > 0:
+        mod.Params.timeLimit = cutoff
+
     mod.optimize()
 
     if mod.status == GRB.Status.OPTIMAL:
@@ -423,8 +422,9 @@ def learn_weighted_max_sat_MILP(
     else:
         pass
 
+
 #
-#def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> bool:
+# def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> bool:
 #    value = get_value(model, instance)
 #    if value is None:
 #        return False

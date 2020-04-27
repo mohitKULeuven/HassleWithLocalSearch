@@ -21,23 +21,20 @@ def solve_weighted_max_sat(
     """
     Solves a MaxSatModel and tries to return num_sol optimal solutions
     """
-#    print(n,model,context)
     c = WCNF()
     c.nv = n
     for w, clause in model:
         c.append(list(map(int, list(clause))), weight=w)
     if len(context) > 0:
         c.append(list(map(int, list(context))), weight=None)
-#    print(c.nv)
     s = RC2(c)
     sol = []
     cst = -1
 
     for m in s.enumerate():
-        while len(m)<n:
-            m.append(len(m)+1)
-            
-#        print(m)
+        while len(m) < n:
+            m.append(len(m) + 1)
+
         if cst < 0:
             cst = s.cost
         if s.cost > cst or len(sol) >= num_sol:
@@ -77,12 +74,10 @@ def get_value(model: MaxSatModel, instance: Instance, context=[]) -> Optional[fl
     """
     Returns the weighted value of an instance
     """
-    #    print(model,instance)
     if context:
         model.append((None, context))
     value = 0
     for weight, clause in model:
-        #        print(instance,clause)
         covered = any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
@@ -99,7 +94,6 @@ def get_cost(model: MaxSatModel, instance: Instance) -> Optional[float]:
     """
     Returns the weighted value of an instance
     """
-    #    print(model,instance)
     value = 0
     for weight, clause in model:
         covered = any(
@@ -119,7 +113,6 @@ def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> 
     if value is None:
         return False
     best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
-    #    print(model, best_instance)
     best_value = get_value(model, best_instance)
     return value == best_value
 

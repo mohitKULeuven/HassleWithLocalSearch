@@ -9,13 +9,13 @@ from type_def import MaxSatModel, Context, Clause
 
 
 def find_solutions_rec(weights, selected, available, budget):
-    if budget <= min(weights)/10:
+    if budget <= min(weights) / 10:
         yield selected
 
     for i in available:
         s = selected | {i}
         b = budget - weights[i]
-        a = [j for j in available if j > i and weights[j] <= b+min(weights)/10]
+        a = [j for j in available if j > i and weights[j] <= b + min(weights) / 10]
         yield from find_solutions_rec(weights, s, a, b)
 
 
@@ -37,7 +37,7 @@ def clause_to_sdd(clause: Clause, manager: SddManager):
 
 
 def get_sdd_manager(n: int):
-    vtree = Vtree(n, list(range(1, n+1)), "balanced")
+    vtree = Vtree(n, list(range(1, n + 1)), "balanced")
     return SddManager.from_vtree(vtree)
 
 
@@ -78,22 +78,29 @@ def count_solutions(n: int, model: MaxSatModel, context: Context):
     return logic.global_model_count()
 
 
-def get_recall_precision(n: int, true_model: MaxSatModel, learned_model: MaxSatModel, context: Context):
+def get_recall_precision(
+    n: int, true_model: MaxSatModel, learned_model: MaxSatModel, context: Context
+):
     manager = get_sdd_manager(n)
     true_logic = convert_to_logic(manager, n, true_model, context)
     learned_logic = convert_to_logic(manager, n, learned_model, context)
     combined = true_logic & learned_logic
-    
-    true_count, learned_count, combined_count = (l.global_model_count() for l in (true_logic, learned_logic, combined))
-#    print(true_count, learned_count, combined_count)
-#    learned_sol, cost = solve_weighted_max_sat(n, true_model, set(), pow(2,n))
-#    print(len(learned_sol))
-#    learned_sol, cost = solve_weighted_max_sat(n, learned_model, set(), pow(2,n))
-#    print(len(learned_sol))
-    TN=pow(2,n)-(true_count+learned_count-combined_count)
-    accuracy=(TN+combined_count)*100/pow(2,n)
-    recall=combined_count*100 / true_count
-    precision=combined_count*100 / learned_count
+
+    true_count, learned_count, combined_count = (
+        l.global_model_count() for l in (true_logic, learned_logic, combined)
+    )
+    if learned_count == 0:
+        print(learned_model)
+        return -2, -2, -2
+    #    print(true_count, learned_count, combined_count)
+    #    learned_sol, cost = solve_weighted_max_sat(n, true_model, set(), pow(2,n))
+    #    print(len(learned_sol))
+    #    learned_sol, cost = solve_weighted_max_sat(n, learned_model, set(), pow(2,n))
+    #    print(len(learned_sol))
+    TN = pow(2, n) - (true_count + learned_count - combined_count)
+    accuracy = (TN + combined_count) * 100 / pow(2, n)
+    recall = combined_count * 100 / true_count
+    precision = combined_count * 100 / learned_count
     return recall, precision, accuracy
 
 
@@ -105,5 +112,5 @@ def simple():
     print(r, p)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     simple()

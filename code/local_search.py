@@ -11,7 +11,6 @@ import time
 from typing import List
 from type_def import MaxSatModel, Clause
 import MaxSAT
-import matplotlib.pyplot as plt
 import copy
 
 
@@ -22,10 +21,14 @@ def eval_neighbours(
     next_correct_examples = np.zeros([len(neighbours), data.shape[0]])
 
     scores = [0 for i in range(len(neighbours))]
+    optimums = {}
     for m, next_model in enumerate(neighbours):
         for i, example in enumerate(data):
+            key = "_".join(map(str, contexts[i]))
+            if key not in optimums:
+                optimums[key] = next_model.optimal_value(contexts[i])
             if correct_examples[i] == 1 and next_model.is_correct(
-                example, labels[i], contexts[i]
+                example, labels[i], contexts[i], optimums[key]
             ):
                 next_correct_examples[m, i] = 1
                 scores[m] += 1
@@ -42,13 +45,17 @@ def eval_neighbours(
         lst_models.append(neighbours[best_index])
         del scores[best_index]
         del neighbours[best_index]
-
+        optimums = {}
         for i, example in enumerate(data):
-            if correct_examples[i] == 0 and lst_models[-1].is_correct(
-                example, labels[i], contexts[i]
-            ):
-                next_correct_examples[best_index, i] = 1
-                lst_scores[-1] += 1
+            if correct_examples[i] == 0:
+                key = "_".join(map(str, contexts[i]))
+                if key not in optimums:
+                    optimums[key] = lst_models[-1].optimal_value(contexts[i])
+                if lst_models[-1].is_correct(
+                    example, labels[i], contexts[i], optimums[key]
+                ):
+                    next_correct_examples[best_index, i] = 1
+                    lst_scores[-1] += 1
         lst_correct_examples.append(next_correct_examples[best_index, :])
     return lst_models, lst_scores, lst_correct_examples
 
@@ -227,9 +234,19 @@ def ternary(n, length):
 
 
 def learn_weighted_max_sat(
-    m: int,data: np.ndarray,labels: np.ndarray,contexts: List[Clause],
-    method,cutoff_score: int, w,
-    p=0.1,wp=0.1,theta=0.17,phi=0.2,cutoff_time=5,seed=1
+    m: int,
+    data: np.ndarray,
+    labels: np.ndarray,
+    contexts: List[Clause],
+    method,
+    cutoff_score: int,
+    weighted,
+    p=0.1,
+    wp=0.1,
+    theta=0.17,
+    phi=0.2,
+    cutoff_time=5,
+    seed=1,
 ) -> MaxSatModel:
     """
     Learn a weighted MaxSAT model from examples. Contexts and clauses are set-encoded, i.e., they are represented by
@@ -255,22 +272,16 @@ def learn_weighted_max_sat(
     rng = np.random.RandomState(seed)
     c = [rng.randint(0, 2) for i in range(m)]
     w = [1 for i in range(m)]
-    
-    l=[]
-    i=1
-#    print(data.shape)
+
+    l = []
+    i = 1
     while i <= m:
-        clause=[]
+        clause = []
         for _ in range(data.shape[1]):
-            clause.append(int(rng.choice([-1,0,1])))
+            clause.append(int(rng.choice([-1, 0, 1])))
         if clause not in l:
             l.append(clause)
-            i+=1
-#    random_clauses = [rng.randint(1, pow(3, data.shape[1])) for i in range(m)]
-#    l = [ternary(i, data.shape[1]) for i in random_clauses]
-#    l = [[-1 if j == 2 else j for j in clause] for clause in l]
-
-    #    l=[[rng.choice([-1,0,1]) for j in range(data.shape[1])] for i in range(m)]
+            i += 1
     model = MaxSAT.MaxSAT(c, w, l)
     prev_model = model
 
@@ -280,10 +291,9 @@ def learn_weighted_max_sat(
     solution = model.deep_copy()
     best_score = score
     time_taken = time.time() - start
-    iterations=0
+    iterations = 0
     while score < cutoff_score and time.time() - start < cutoff_time:
-#    while score < cutoff_score and iterations < cutoff_time:
-        neighbours = model.walk_sat_neighbours(data, labels, contexts, rng,w)
+        neighbours = model.walk_sat_neighbours(data, labels, contexts, rng, weighted)
         if len(neighbours) == 0:
             continue
         elif method != "walk_sat" and len(neighbours) < 2:
@@ -326,19 +336,21 @@ def learn_weighted_max_sat(
         scores.append(score)
         prev_model = model
         model = next_model
-        #        print(model.maxSatModel(),score)
         if score > best_score:
             solution = model.deep_copy()
             best_score = score
             time_taken = time.time() - start
         best_scores.append(best_score)
-        iterations+=1
-    #        break
+        iterations += 1
 
-    #    print(f"time taken: {time_taken} seconds")
     score_percentage = best_score * 100 / data.shape[0]
     print("Final Score: ", score_percentage)
-    #    print(solution.maxSatModel(),best_score,best_score*100/data.shape[0])
 
-    return solution.maxSatModel(), score_percentage, time_taken, scores, best_scores,iterations
-
+    return (
+        solution.maxSatModel(),
+        score_percentage,
+        time_taken,
+        scores,
+        best_scores,
+        iterations,
+    )

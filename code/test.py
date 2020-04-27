@@ -8,6 +8,7 @@ Created on Mon Mar  2 16:36:56 2020
 import numpy as np
 from local_search import learn_weighted_max_sat
 
+
 def example1():
     # Example
     #      A \/ B
@@ -151,6 +152,7 @@ def example2():
         {-2, -3},
         {2, 3},
     ]
+
 
 #    a, b, c, scores, best_scores = learn_weighted_max_sat(
 #        3, data, labels, contexts, "walk_sat", 18,cutoff_time=60

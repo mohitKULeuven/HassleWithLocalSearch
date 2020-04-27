@@ -209,24 +209,24 @@ def neighbours_sub(model: MaxSAT, instance, context, rng, w):
         neighbour = model.deep_copy()
         neighbour.c[index] = 1 - neighbour.c[index]
         neighbours.append(neighbour)
-        
-        if w==1:
-            tmp_w=model.w[index]
-            if tmp_w!=1 and model.c[index]==0:
+
+        if w == 1:
+            tmp_w = model.w[index]
+            if tmp_w < 0.99999 and model.c[index] == 0:
                 neighbour = model.deep_copy()
-                neighbour.w[index]=(tmp_w+1)/2
+                neighbour.w[index] = (tmp_w + 1) / 2
                 neighbours.append(neighbour)
 
     index = sc_sat_opt_not_ex(model, instance, context, rng)
     if index >= 0:
         neighbours.extend(remove_literal(model, index, opt_literals))
         neighbours.extend(add_literal(model, index, exp_literals))
-        
-        if w==1:
-            tmp_w=model.w[index]
-            if tmp_w!=0 and model.c[index]==0:
+
+        if w == 1:
+            tmp_w = model.w[index]
+            if tmp_w > 0.00001 and model.c[index] == 0:
                 neighbour = model.deep_copy()
-                neighbour.w[index]=tmp_w/2
+                neighbour.w[index] = tmp_w / 2
                 neighbours.append(neighbour)
 
     index = sc_not_sat_any(model, instance, context, rng)
@@ -240,7 +240,7 @@ def neighbours_sub(model: MaxSAT, instance, context, rng, w):
     return neighbours
 
 
-def neighbours_pos(model: MaxSAT, instance, context, rng,w):
+def neighbours_pos(model: MaxSAT, instance, context, rng, w):
     exp_literals = instance_to_literals(instance)
 
     neighbours = []
@@ -254,23 +254,23 @@ def neighbours_pos(model: MaxSAT, instance, context, rng,w):
         neighbour = model.deep_copy()
         neighbour.c[index] = 1 - neighbour.c[index]
         neighbours.append(neighbour)
-        
-        if w==1:
-            tmp_w=model.w[index]
-            if tmp_w!=1 and model.c[index]==0:
+
+        if w == 1:
+            tmp_w = model.w[index]
+            if tmp_w < 0.99999 and model.c[index] == 0:
                 neighbour = model.deep_copy()
-                neighbour.w[index]=(tmp_w+1)/2
+                neighbour.w[index] = (tmp_w + 1) / 2
                 neighbours.append(neighbour)
 
     index = sc_sat_ex(model, instance, context, rng)
     if index >= 0:
         neighbours.extend(remove_literal(model, index, exp_literals))
-        
-        if w==1:
-            tmp_w=model.w[index]
-            if tmp_w!=0 and model.c[index]==0:
+
+        if w == 1:
+            tmp_w = model.w[index]
+            if tmp_w > 0.00001 and model.c[index] == 0:
                 neighbour = model.deep_copy()
-                neighbour.w[index]=tmp_w/2
+                neighbour.w[index] = tmp_w / 2
                 neighbours.append(neighbour)
 
     return neighbours
