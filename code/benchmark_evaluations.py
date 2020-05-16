@@ -144,7 +144,6 @@ def learn(args):
 def evaluate(args):
     folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)")
     os.mkdir(f"results/{folder_name}")
-    #    os.mkdir(f"results/{folder_name}/weighted/")
     with open(f"results/{folder_name}/arguments.txt", "w") as f:
         json.dump(args.__dict__, f, indent=2)
     csvfile = open(f"results/{folder_name}/evaluation.csv", "w")
@@ -168,6 +167,10 @@ def evaluate(args):
             "accuracy",
             "f1_score",
             "regret",
+            "infeasiblity",
+            "f1_random",
+            "regret_random", 
+            "inf_random",
             "time_taken",
             "cutoff",
         ]
@@ -184,30 +187,36 @@ def evaluate(args):
                     open("pickles/target_model/" + param + ".pickle", "rb")
                 )
                 target_model = pickle_var["true_model"]
+                max_t=max(args.cutoff)
                 for c, context_seed, method, t in it.product(
                     args.num_context, args.context_seeds, args.method, args.cutoff
                 ):
                     tag = (
                         param
-                        + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}_method_{method}_cutoff_{t}"
+                        + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}_method_{method}_cutoff_{max_t}"
                     )
                     if args.weighted == 0:
                         pickle_var = pickle.load(
                             open(
-                                "pickles/bin_weight/learned_model" + tag + ".pickle",
+                                "pickles/learned_model/" + tag + ".pickle",
                                 "rb",
                             )
                         )
                     else:
                         pickle_var = pickle.load(
                             open(
-                                "pickles/con_weight/learned_model" + tag + ".pickle",
+                                "pickles/learned_model/" + tag + ".pickle",
                                 "rb",
                             )
                         )
-                    learned_model = pickle_var["learned_model"]
-                    time_taken = pickle_var["time_taken"]
-                    score = pickle_var["score"]
+                    i=0
+                    if t<max_t:
+                        for i,cutoff in enumerate(pickle_var["time_taken"]):
+                            if cutoff>t:
+                                break
+                    learned_model = pickle_var["learned_model"][i-1]
+                    time_taken = pickle_var["time_taken"][i-1]
+                    score = pickle_var["score"][i-1]
                     contexts = pickle_var["contexts"]
 
                     global_context = set()
@@ -215,7 +224,7 @@ def evaluate(args):
                         global_context.update(context)
                     recall, precision, accuracy, regret = -1, -1, -1, -1
                     if learned_model:
-                        recall, precision, accuracy, regret = evaluate_statistics_sampling(
+                        recall, precision, accuracy, regret, infeasiblity, f1_random, reg_random, inf_random= evaluate_statistics_sampling(
                             n,
                             target_model,
                             learned_model,
@@ -235,13 +244,14 @@ def evaluate(args):
                     print(
                         seed,
                         context_seed,
+                        cnf_file,
                         m,
                         t,
                         score,
                         accuracy,
-                        recall,
-                        precision,
-                        regret,
+                        f1_score,
+                        reg_random, regret, inf_random,
+                        infeasiblity
                     )
                     filewriter.writerow(
                         [
@@ -262,6 +272,8 @@ def evaluate(args):
                             accuracy,
                             f1_score,
                             regret,
+                            infeasiblity, 
+                            f1_random, reg_random, inf_random,
                             time_taken,
                             t,
                         ]

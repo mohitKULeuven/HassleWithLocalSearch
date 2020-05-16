@@ -98,6 +98,7 @@ def generate_data(n, model: MaxSatModel, context: Context, num_pos, num_neg, see
     num_pos = len(data)
     labels = [True] * num_pos
     max_tries = 1000 * num_neg
+    rng = np.random.RandomState(seed)
     for l in range(max_tries):
         instance = rng.rand(n) > 0.5
         for i in rng.choice(list(context), 1):

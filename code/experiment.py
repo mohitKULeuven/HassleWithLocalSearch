@@ -13,7 +13,7 @@ from type_def import MaxSatModel, Context
 from generator import generate_models, generate_contexts_and_data
 from pysat_solver import solve_weighted_max_sat, get_value, label_instance
 from local_search import learn_weighted_max_sat
-from milp_learner import learn_weighted_max_sat_MILP
+#from milp_learner import learn_weighted_max_sat_MILP
 from verify import get_recall_precision
 
 
@@ -22,27 +22,20 @@ def learn_model(n, max_clause_length, num_constraints, method, cutoff, param, w)
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
     param += f"_method_{method}_cutoff_{cutoff}"
-    if w == 0 and os.path.exists(
-        "pickles/bin_weight/learned_model" + param + ".pickle"
+
+    if os.path.exists(
+        "pickles/learned_model/" + param + ".pickle"
     ):
         pickle_var = pickle.load(
-            open("pickles/bin_weight/learned_model" + param + ".pickle", "rb")
+            open("pickles/learned_model/" + param + ".pickle", "rb")
         )
-        print(param + "\n")
-        return pickle_var["learned_model"], pickle_var["time_taken"]
-    elif w == 1 and os.path.exists(
-        "pickles/con_weight/learned_model" + param + ".pickle"
-    ):
-        pickle_var = pickle.load(
-            open("pickles/con_weight/learned_model" + param + ".pickle", "rb")
-        )
-        print(param + "\n")
+        print("Exists: "+param + "\n")
         return pickle_var["learned_model"], pickle_var["time_taken"]
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
     contexts = pickle_var["contexts"]
 
-    model, score, time_taken, scores, best_scores, iterations = learn_weighted_max_sat(
+    models, scores, time_taken,iterations = learn_weighted_max_sat(
         num_constraints,
         data,
         labels,
@@ -52,38 +45,36 @@ def learn_model(n, max_clause_length, num_constraints, method, cutoff, param, w)
         w,
         cutoff_time=cutoff,
     )
+    
+    for i,score in enumerate(scores):
+        scores[i]=scores[i] * 100 / data.shape[0]
 
-    pickle_var["learned_model"] = model
+    pickle_var["learned_model"] = models
     pickle_var["time_taken"] = time_taken
-    pickle_var["score"] = score
-    pickle_var["scores"] = scores
-    pickle_var["best_scores"] = best_scores
+    pickle_var["score"] = scores
     pickle_var["iterations"] = iterations
-    if w == 0:
-        pickle.dump(
-            pickle_var,
-            open("pickles/bin_weight/learned_model" + param + ".pickle", "wb"),
-        )
-    else:
-        pickle.dump(
-            pickle_var,
-            open("pickles/con_weight/learned_model" + param + ".pickle", "wb"),
-        )
-    print(param + "\n")
-    return model, time_taken
+
+    pickle.dump(
+        pickle_var,
+        open("pickles/learned_model/" + param + ".pickle", "wb"),
+    )
+    print(param + ": " + str(pickle_var["score"][-1]) + "\n")
+    return models[-1], time_taken[-1]
 
 
-def learn_model_MILP(n, max_clause_length, num_constraints, method, cutoff, param):
+def learn_model_MILP(n, max_clause_length, num_constraints, method, 
+                     cutoff, max_cutoff, param):
     pickle_var = pickle.load(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
+    
     param += f"_method_{method}_cutoff_{cutoff}"
-    if os.path.exists("pickles/bin_weight/learned_model" + param + ".pickle"):
+    if os.path.exists("pickles/learned_model/" + param + ".pickle"):
         pickle_var = pickle.load(
-            open("pickles/bin_weight/learned_model" + param + ".pickle", "rb")
+            open("pickles/learned_model/" + param + ".pickle", "rb")
         )
-        print(param + ": " + str(pickle_var["score"]) + "\n")
-        return pickle_var["learned_model_MILP"], pickle_var["time_taken"]
+        print("Exists: "+param + ": " + str(pickle_var["score"]) + "\n")
+        return pickle_var["learned_model"], pickle_var["time_taken"]
 
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
@@ -104,12 +95,12 @@ def learn_model_MILP(n, max_clause_length, num_constraints, method, cutoff, para
             if label == learned_label:
                 score += 1
 
-    pickle_var["learned_model"] = learned_model
-    pickle_var["time_taken"] = end - start
-    pickle_var["score"] = score * 100 / data.shape[0]
+    pickle_var["learned_model"] = [learned_model]
+    pickle_var["time_taken"] = [end - start]
+    pickle_var["score"] = [score * 100 / data.shape[0]]
 
     pickle.dump(
-        pickle_var, open("pickles/bin_weight/learned_model" + param + ".pickle", "wb")
+        pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb")
     )
     print(param + ": " + str(pickle_var["score"]) + "\n")
     return learned_model, end - start
@@ -131,7 +122,7 @@ def evaluate_statistics_sampling(
     )
     recall = tp1 * 100 / (tp1 + fn)
     precision = tp2 * 100 / (tp2 + fp)
-    reg = regret(n, target_model, learned_model)
+    reg,infeasiblity = regret(n, target_model, learned_model,context)
 
     rng = np.random.RandomState(seed)
     learned_neg_count = 0
@@ -152,7 +143,8 @@ def evaluate_statistics_sampling(
             if learned_neg_count == sample_size:
                 break
     accuracy = (tp1 + tp2 + tn) * 100 / (tp1 + tp2 + fn + fp + learned_neg_count)
-    return recall, precision, accuracy, reg
+    f1_random, reg_random, inf_random=random_classifier(n, target_model, context, sample_size, seed)
+    return recall, precision, accuracy, reg, infeasiblity, f1_random, reg_random, inf_random
 
 
 def evaluate_statistics(
@@ -161,15 +153,9 @@ def evaluate_statistics(
     recall, precision, accuracy = get_recall_precision(
         n, target_model, learned_model, context
     )
-    learned_sol, cost = solve_weighted_max_sat(n, learned_model, context, 1)
-    learned_opt_val = get_value(target_model, learned_sol)
+    reg,infeasiblity=regret(n, target_model, learned_model,context)
 
-    sol, cost = solve_weighted_max_sat(n, target_model, context, 1)
-    opt_val = get_value(target_model, sol)
-
-    regret = (opt_val - learned_opt_val) * 100 / opt_val if learned_opt_val else -1
-
-    return recall, precision, accuracy, regret
+    return recall, precision, accuracy, reg,infeasiblity
 
 
 def recall_precision(n, model1, model2, context, sample_size, seed):
@@ -193,14 +179,62 @@ def recall_precision(n, model1, model2, context, sample_size, seed):
             tp += 1
     return tp, len(sample_model1) - tp
 
-
-def regret(n, target_model, learned_model):
-    learned_sol, cost = solve_weighted_max_sat(n, learned_model, [], 1)
-    learned_opt_val = get_value(target_model, learned_sol)
-    sol, cost = solve_weighted_max_sat(n, target_model, [], 1)
+def random_classifier(n, target_model, context, sample_size, seed):
+    rng = np.random.RandomState(seed)
+    tp = 0
+    learned_sols = []
+    while len(learned_sols) < sample_size:
+        instance = rng.rand(n) > 0.5
+        for i in rng.choice(list(context), 1):
+            instance[abs(i) - 1] = i > 0
+        if list(instance) in learned_sols:
+            continue
+        learned_sols.append(list(instance))
+        if label_instance(target_model, instance, context):
+            tp+=1
+    recall=tp*100/sample_size
+    
+    sol, cost = solve_weighted_max_sat(n, target_model, context, 1)
     opt_val = get_value(target_model, sol)
-    regret = (opt_val - learned_opt_val) * 100 / opt_val if learned_opt_val else -1
-    return regret
+    avg_regret=0
+    infeasible=0
+    for learned_sol in learned_sols:
+        learned_opt_val = get_value(target_model, learned_sol)
+        if not learned_opt_val:
+            infeasible+=1
+        else:
+            regret = (opt_val - learned_opt_val) * 100 / opt_val
+            avg_regret+=regret
+    if infeasible<len(learned_sols):
+        avg_regret=avg_regret/(len(learned_sols)-infeasible)
+    else:
+        avg_regret=-1
+    
+    f1=(2*recall*50)/(recall+50)
+    return f1, avg_regret,infeasible*100/len(learned_sols)
+
+
+def regret(n, target_model, learned_model,context):
+    
+    sol, cost = solve_weighted_max_sat(n, target_model, context, 1)
+    opt_val = get_value(target_model, sol)
+    avg_regret=0
+    infeasible=0
+    learned_sols, cost = solve_weighted_max_sat(n, learned_model, context, 100)
+    for learned_sol in learned_sols:
+        learned_opt_val = get_value(target_model, learned_sol)
+        if not learned_opt_val:
+            infeasible+=1
+        else:
+            regret = (opt_val - learned_opt_val) * 100 / opt_val
+            avg_regret+=regret
+    if infeasible<len(learned_sols):
+        avg_regret=avg_regret/(len(learned_sols)-infeasible)
+    else:
+        avg_regret=-1
+        
+    return avg_regret,infeasible*100/len(learned_sols)
+    
 
 
 def generate(args):
@@ -217,6 +251,7 @@ def generate(args):
 
 
 def learn(args):
+    max_t=max(args.cutoff)
     for n, h, s, seed, c, context_seed, m, t in it.product(
         args.num_vars,
         args.num_hard,
@@ -230,16 +265,32 @@ def learn(args):
         if m == "MILP":
             try:
                 param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
-                learn_model_MILP(n, n, h + s, m, t, param)
+                learn_model_MILP(n, n, h + s, m, t,max_t, param)
+#                print(param)
             except FileNotFoundError:
                 continue
         else:
             try:
                 param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
                 learn_model(n, n, h + s, m, t, param, args.weighted)
+#                print(param)
             except FileNotFoundError:
                 continue
 
+def get_learned_model(time_taken,max_cutoff,cutoff):
+    if cutoff==max_cutoff:
+        return -1
+    elif cutoff<max_cutoff:
+        ind=0
+        for index,t in enumerate(time_taken):
+#            print(index,t)
+            if t<=cutoff:
+                ind=1
+            elif cutoff<t and ind==1:
+                break
+            elif cutoff<t and ind==0:
+                return None
+    return index-1
 
 def evaluate(args):
     folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)")
@@ -250,25 +301,10 @@ def evaluate(args):
     filewriter = csv.writer(csvfile, delimiter=",")
     filewriter.writerow(
         [
-            "num_vars",
-            "num_hard",
-            "num_soft",
-            "model_seed",
-            "num_context",
-            "context_seed",
-            "num_pos",
-            "num_neg",
-            "pos_per_context",
-            "neg_per_context",
-            "method",
-            "score",
-            "recall",
-            "precision",
-            "accuracy",
-            "f1_score",
-            "regret",
-            "time_taken",
-            "cutoff",
+            "num_vars","num_hard","num_soft","model_seed","num_context",
+            "context_seed","num_pos","num_neg","pos_per_context","neg_per_context",
+            "method","score","recall","precision","accuracy","f1_score",
+            "regret","infeasiblity","time_taken","cutoff",
         ]
     )
     for n, h, s, seed in it.product(
@@ -279,64 +315,73 @@ def evaluate(args):
             open("pickles/target_model/" + param + ".pickle", "rb")
         )
         target_model = pickle_var["true_model"]
-        for c, context_seed, m, t in it.product(
-            args.num_context, args.context_seeds, args.method, args.cutoff
+        max_t=max(args.cutoff)
+        for c, context_seed, m in it.product(
+            args.num_context, args.context_seeds, args.method
         ):
             tag = (
                 param
-                + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}_method_{m}_cutoff_{t}"
+                + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}_method_{m}_cutoff_{max_t}"
             )
             if m == "MILP":
                 pickle_var = pickle.load(
-                    open("pickles/bin_weight/learned_model" + tag + ".pickle", "rb")
+                    open("pickles/learned_model/" + tag + ".pickle", "rb")
                 )
             else:
                 pickle_var = pickle.load(
-                    open("pickles/con_weight/learned_model" + tag + ".pickle", "rb")
+                    open("pickles/learned_model/" + tag + ".pickle", "rb")
                 )
-            learned_model = pickle_var["learned_model"]
-            time_taken = pickle_var["time_taken"]
-            score = pickle_var["score"]
-            contexts = pickle_var["contexts"]
-            global_context = set()
-            for context in contexts:
-                global_context.update(context)
-            recall, precision, accuracy, regret = -1, -1, -1, -1
-            if learned_model:
-                recall, precision, accuracy, regret = evaluate_statistics(
-                    n, target_model, learned_model, global_context
-                )
-            f1_score = 2 * recall * precision / (recall + precision)
             if c == 0:
                 pos_per_context = pickle_var["labels"].count(True)
                 neg_per_context = pickle_var["labels"].count(False)
             else:
                 pos_per_context = pickle_var["labels"].count(True) / c
                 neg_per_context = pickle_var["labels"].count(False) / c
-            print(seed, context_seed, m, t, score, accuracy, recall, precision, regret)
-            filewriter.writerow(
-                [
-                    n,
-                    h,
-                    s,
-                    seed,
-                    c,
-                    context_seed,
-                    args.num_pos,
-                    args.num_neg,
-                    pos_per_context,
-                    neg_per_context,
-                    m,
-                    score,
-                    recall,
-                    precision,
-                    accuracy,
-                    f1_score,
-                    regret,
-                    time_taken,
-                    t,
-                ]
-            )
+            last_index=-2
+            recall,precision,accuracy,regret,infeasiblity,f1_score = -1,-1,-1,-1,-1,-1
+            for t in args.cutoff:
+                index=get_learned_model(pickle_var["time_taken"],max_t,t)
+                learned_model = None
+                time_taken = t
+                score = -1
+                if index is not None:
+                    learned_model = pickle_var["learned_model"][index]
+                    if m!="MILP" and n==10 and h==10:
+                        learned_model=learned_model.maxSatModel()
+                    time_taken = pickle_var["time_taken"][index]
+                    if learned_model:
+                        score = pickle_var["score"][index]
+                
+                if index==last_index:
+                    print(c, m, t, score, accuracy, f1_score, infeasiblity, regret)
+                    filewriter.writerow(
+                        [
+                            n,h,s,seed,c,context_seed,args.num_pos,args.num_neg,
+                            pos_per_context,neg_per_context,m,score,recall,precision,
+                            accuracy,f1_score,regret,infeasiblity,time_taken,t,
+                        ]
+                    )
+                    continue
+                last_index=index
+                
+                contexts = pickle_var["contexts"]
+                global_context = set()
+                for context in contexts:
+                    global_context.update(context)
+                if learned_model:
+                    recall, precision, accuracy, regret,infeasiblity = evaluate_statistics(
+                        n, target_model, learned_model, global_context
+                    )
+                f1_score = 2 * recall * precision / (recall + precision)
+                
+                print(c, m, t, score, accuracy, f1_score, infeasiblity, regret)
+                filewriter.writerow(
+                    [
+                        n,h,s,seed,c,context_seed,args.num_pos,args.num_neg,
+                        pos_per_context,neg_per_context,m,score,recall,precision,
+                        accuracy,f1_score,regret,infeasiblity,time_taken,t,
+                    ]
+                )
     csvfile.close()
 
 
@@ -368,7 +413,7 @@ if __name__ == "__main__":
             "novelty",
             "novelty_plus",
             "adaptive_novelty_plus",
-            "MILP",
+            "MILP"
         ],
     )
     CLI.add_argument(

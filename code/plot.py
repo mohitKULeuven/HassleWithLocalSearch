@@ -12,7 +12,7 @@ import argparse
 import pandas as pd
 from mpl_toolkits import mplot3d
 
-plt.rcParams.update({"font.size": 15})
+plt.rcParams.update({"font.size": 20})
 
 CLI = argparse.ArgumentParser()
 CLI.add_argument(
@@ -23,14 +23,14 @@ CLI.add_argument(
         "model_learned",
         "score",
         "accuracy",
-        "f1_score",
-        "infeasible",
+#        "f1_score",
+        "infeasiblity",
         "regret",
-        "time_taken",
+#        "time_taken",
     ],  # default if nothing is provided
 )
 CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
-CLI.add_argument("--folder", type=str, default="results/26-04-20 (22:34:30.254998)/")
+CLI.add_argument("--folder", type=str, default="results/06-05-20 (11:35:09.937930)/")
 CLI.add_argument("--file", type=str, default="evaluation")
 CLI.add_argument("--type", type=str, default="line")
 # data_size=5
@@ -42,15 +42,17 @@ data = pd.read_csv(result_file)
 # milp_data=data.loc[data["method"]=="MILP"]
 # print(milp_data[milp_data["accuracy"]==-1].shape[0])
 # data=data.loc[data["method"]=="adaptive_novelty_plus"]
-data = data.loc[data["cutoff"] != 50]
+#data = data.loc[data["cutoff"] != 50]
 # data=data.loc[data["cutoff"]==1200]
 # data=data.loc[data["num_context"]==10]
 data["score"][data["accuracy"] == -1] = np.nan
 data["accuracy"] = data["accuracy"].replace(-1, np.nan)
 data["f1_score"] = data["f1_score"].replace(-1, np.nan)
 data["regret"] = data["regret"].replace(-1, np.nan)
+#data["regret"] = data["infeasiblity"].replace(-1, np.nan)
 data["accuracy"] = data["accuracy"] / 100
 data["f1_score"] = data["f1_score"] / 100
+data["infeasiblity"] = data["infeasiblity"] / 100
 data["regret"] = data["regret"] / 100
 data["score"] = data["score"] / 100
 # data["f1_score"]=(2*data["recall"]*data["precision"])/(data["recall"]+data["precision"])
@@ -66,17 +68,18 @@ def std_err(x):
 if args.type == "line":
     fig, ax = plt.subplots(
         len(args.aggregate),
-        5,
+        4,
         figsize=(18, 3 * len(args.aggregate)),
         sharex="col",
         sharey="row",
     )
     #    fig, ax = plt.subplots(1, 1, figsize=(6, 3.5))
     for i, stats in enumerate(args.aggregate):
-        for j, c in enumerate([10, 25, 50, 100, 150]):
+        for j, c in enumerate([10, 25, 50, 100]):
+#            print(i,j,stats,c)
             tmp_data = data.loc[data["num_context"] == c]
             tmp_data["model_learned"] = 1 - tmp_data["accuracy"].isna().astype(int)
-            tmp_data["infeasible"] = tmp_data["regret"].isna()
+#            tmp_data["infeasible"] = tmp_data["regret"].isna().astype(int)
 
             #        tmp_data['optimal_not_feasible']=tmp_data["regret"].isna()
             #        print(tmp_data['regret'].tail())
@@ -110,19 +113,21 @@ if args.type == "line":
             ax[i, j].set_ylabel(stats.capitalize())
             ax[i, j].set_xlabel("cutoff (in minutes)")
             ax[i, j].grid(True)
-            ax[-1, j].set_yticks([60, 300, 600, 900, 1200, 1500, 1800])
-            ax[-1, j].set_yticklabels([1, 5, 10, 15, 20, 25, 30])
+#            ax[-1, j].set_yticks([60, 300, 600, 900, 1200, 1500, 1800])
+#            ax[-1, j].set_yticklabels([1, 5, 10, 15, 20, 30])
             ax[0, j].set_title(r"|$\mathcal{\Psi}$|=" + str(c))
             if stats == "model_learned":
                 ax[i, j].set_ylim(0, 1.1)
             elif stats == "score":
-                ax[i, j].set_ylim(0.7, 1.1)
+                ax[i, j].set_ylim(0.8, 1.01)
             elif stats == "accuracy":
                 ax[i, j].set_ylim(0.6, 1)
             elif stats == "f1_score":
                 ax[i, j].set_ylim(0.3, 1)
             elif stats == "regret":
-                ax[i, j].set_ylim(0, 0.2)
+                ax[i, j].set_ylim(0, 0.05)
+            elif stats == "infeasiblity":
+                ax[i, j].set_ylim(0, 0.3)
             handles, labels = ax[i, j].get_legend_handles_labels()
     #            print(labels)
     #    plt.subplots_adjust(wspace=0.25)
@@ -139,7 +144,7 @@ if args.type == "line":
     plt.savefig(
         args.folder + "synthetic_" + args.file + ".png",
         bbox_inches="tight",
-        pad_inches=0,
+        pad_inches=0.1,
     )
 
 else:

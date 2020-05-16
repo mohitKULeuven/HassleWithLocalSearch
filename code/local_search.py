@@ -267,8 +267,7 @@ def learn_weighted_max_sat(
     """
     start = time.time()
     # starting with a random model
-    scores = []
-    best_scores = []
+    
     rng = np.random.RandomState(seed)
     c = [rng.randint(0, 2) for i in range(m)]
     w = [1 for i in range(m)]
@@ -286,11 +285,10 @@ def learn_weighted_max_sat(
     prev_model = model
 
     score, correct_examples = model.score(data, labels, contexts)
-    scores.append(score)
     print("Initial Score: ", score * 100 / data.shape[0])
-    solution = model.deep_copy()
-    best_score = score
-    time_taken = time.time() - start
+    solutions = [model.deep_copy().maxSatModel()]
+    best_scores = [score]
+    time_taken = [time.time() - start]
     iterations = 0
     while score < cutoff_score and time.time() - start < cutoff_time:
         neighbours = model.walk_sat_neighbours(data, labels, contexts, rng, weighted)
@@ -333,24 +331,26 @@ def learn_weighted_max_sat(
                 best_scores,
                 rng,
             )
-        scores.append(score)
         prev_model = model
         model = next_model
-        if score > best_score:
-            solution = model.deep_copy()
-            best_score = score
-            time_taken = time.time() - start
-        best_scores.append(best_score)
+        if score > best_scores[-1]:
+            solutions.append(model.deep_copy().maxSatModel())
+            best_scores.append(score)
+            time_taken.append(time.time() - start)
         iterations += 1
 
-    score_percentage = best_score * 100 / data.shape[0]
-    print("Final Score: ", score_percentage)
-
+#    score_percentage = best_score * 100 / data.shape[0]
+    print("Final Score: ", best_scores[-1] * 100 / data.shape[0])
+    
     return (
-        solution.maxSatModel(),
-        score_percentage,
-        time_taken,
-        scores,
-        best_scores,
+        [solutions[-1]],
+        [best_scores[-1]],
+        [time_taken[-1]],
         iterations,
     )
+#    return (
+#        solutions,
+#        best_scores,
+#        time_taken,
+#        iterations,
+#    )
