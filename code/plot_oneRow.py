@@ -21,7 +21,7 @@ CLI.add_argument(
     default=[
         "score",
         "accuracy",
-        "f1_score",
+#        "f1_score",
         "infeasiblity",
         "regret",
     ],  # default if nothing is provided
@@ -85,7 +85,7 @@ fig.legend(  # The line objects
     loc="upper center",  # Position of legend
     bbox_to_anchor=(0.1, 1.02, 0.69, 0.1),
     #            mode="expand",
-    ncol=5,
+    ncol=4,
     #            borderaxespad=0.1,    # Small spacing around legend box
     #            title="Statistics"  # Title for the legend
 )

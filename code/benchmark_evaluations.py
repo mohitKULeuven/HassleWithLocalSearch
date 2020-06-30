@@ -19,7 +19,7 @@ import json
 
 from type_def import MaxSatModel
 from generator import generate_contexts_and_data
-from experiment import learn_model, evaluate_statistics_sampling
+from experiment import learn_model, learn_model_MILP, evaluate_statistics_sampling
 
 logger = logging.getLogger(__name__)
 _MIN_WEIGHT, _MAX_WEIGHT = 1, 100
@@ -134,11 +134,18 @@ def learn(args):
                     for seed in args.model_seeds:
                         n, m = cnf_param(args.path + cnf_file, args.num_constraints)
                         param = f"_{cnf_file}_num_constraints_{args.num_constraints}_per_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
-                        try:
-                            learn_model(n, n, m, method, t, param, args.weighted)
-                        except FileNotFoundError:
-                            print("FileNotFound: " + param)
-                            continue
+                        if method=="MILP":
+                            try:
+                                learn_model_MILP(n, n, m, method, t, param)
+                            except FileNotFoundError:
+                                print("FileNotFound: " + param)
+                                continue
+                        else:
+                            try:
+                                learn_model(n, n, m, method, t, param, args.weighted)
+                            except FileNotFoundError:
+                                print("FileNotFound: " + param)
+                                continue
 
 
 def evaluate(args):
