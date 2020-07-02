@@ -9,13 +9,13 @@ Created on Sun Jan 19 16:46:25 2020
 import numpy as np
 import time
 from typing import List
-from type_def import MaxSatModel, Clause
-import MaxSAT
+from .type_def import Clause
+from .maxsat import MaxSAT
 import copy
 
 
 def eval_neighbours(
-    model, correct_examples, neighbours, data, labels, contexts, num_neighbours, rng
+    correct_examples, neighbours, data, labels, contexts, num_neighbours, rng
 ):
     neighbours = copy.copy(neighbours)
     next_correct_examples = np.zeros([len(neighbours), data.shape[0]])
@@ -60,10 +60,10 @@ def eval_neighbours(
     return lst_models, lst_scores, lst_correct_examples
 
 
-def walk_sat(model, correct_examples, neighbours, data, labels, contexts, p, rng):
+def walk_sat(correct_examples, neighbours, data, labels, contexts, p, rng):
     prev_score = len(correct_examples)
     lst_models, lst_scores, lst_correct_examples = eval_neighbours(
-        model, correct_examples, neighbours, data, labels, contexts, 1, rng
+        correct_examples, neighbours, data, labels, contexts, 1, rng
     )
     next_model, score, correct_examples = (
         lst_models[0],
@@ -80,11 +80,9 @@ def walk_sat(model, correct_examples, neighbours, data, labels, contexts, p, rng
         return next_model, score, correct_examples
 
 
-def novelty(
-    model, prev_model, correct_examples, neighbours, data, labels, contexts, p, rng
-):
+def novelty(prev_model, correct_examples, neighbours, data, labels, contexts, p, rng):
     lst_models, lst_scores, lst_correct_examples = eval_neighbours(
-        model, correct_examples, neighbours, data, labels, contexts, 2, rng
+        correct_examples, neighbours, data, labels, contexts, 2, rng
     )
     if not lst_models[0].is_same(prev_model):
         return lst_models[0], lst_scores[0], lst_correct_examples[0]
@@ -95,19 +93,18 @@ def novelty(
 
 
 def novelty_plus(
-    model, prev_model, correct_examples, neighbours, data, labels, contexts, p, wp, rng
+    prev_model, correct_examples, neighbours, data, labels, contexts, p, wp, rng
 ):
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
         score, correct_examples = next_model.score(data, labels, contexts)
         return next_model, score, correct_examples
     return novelty(
-        model, prev_model, correct_examples, neighbours, data, labels, contexts, p, rng
+        prev_model, correct_examples, neighbours, data, labels, contexts, p, rng
     )
 
 
 def adaptive_novelty_plus(
-    model,
     prev_model,
     correct_examples,
     neighbours,
@@ -132,13 +129,12 @@ def adaptive_novelty_plus(
         score, correct_examples = next_model.score(data, labels, contexts)
         return next_model, score, correct_examples, wp
     next_model, score, correct_examples = novelty(
-        model, prev_model, correct_examples, neighbours, data, labels, contexts, p, rng
+        prev_model, correct_examples, neighbours, data, labels, contexts, p, rng
     )
     return next_model, score, correct_examples, wp
 
 
 def best_neighbour(
-    model,
     prev_model,
     correct_examples,
     neighbours,
@@ -166,25 +162,16 @@ def best_neighbour(
     else:
         if method == "walk_sat":
             return walk_sat(
-                model, correct_examples, neighbours, data, labels, contexts, p, rng
+                correct_examples, neighbours, data, labels, contexts, p, rng
             )
 
         elif method == "novelty":
             return novelty(
-                model,
-                prev_model,
-                correct_examples,
-                neighbours,
-                data,
-                labels,
-                contexts,
-                p,
-                rng,
+                prev_model, correct_examples, neighbours, data, labels, contexts, p, rng
             )
 
         elif method == "novelty_plus":
             return novelty_plus(
-                model,
                 prev_model,
                 correct_examples,
                 neighbours,
@@ -195,10 +182,8 @@ def best_neighbour(
                 wp,
                 rng,
             )
-
-        else:
+        elif method == "adaptive_novelty_plus":
             return adaptive_novelty_plus(
-                model,
                 prev_model,
                 correct_examples,
                 neighbours,
@@ -247,7 +232,7 @@ def learn_weighted_max_sat(
     phi=0.2,
     cutoff_time=5,
     seed=1,
-) -> MaxSatModel:
+):
     """
     Learn a weighted MaxSAT model from examples. Contexts and clauses are set-encoded, i.e., they are represented by
     sets containing positive or negative integers in the range -n-1 to n+1. If a set contains an positive integer i, the i-1th
@@ -267,7 +252,7 @@ def learn_weighted_max_sat(
     """
     start = time.time()
     # starting with a random model
-    
+
     rng = np.random.RandomState(seed)
     c = [rng.randint(0, 2) for i in range(m)]
     w = [1 for i in range(m)]
@@ -281,7 +266,7 @@ def learn_weighted_max_sat(
         if clause not in l:
             l.append(clause)
             i += 1
-    model = MaxSAT.MaxSAT(c, w, l)
+    model = MaxSAT(c, w, l)
     prev_model = model
 
     score, correct_examples = model.score(data, labels, contexts)
@@ -291,7 +276,7 @@ def learn_weighted_max_sat(
     time_taken = [time.time() - start]
     iterations = 0
     while score < cutoff_score and time.time() - start < cutoff_time:
-        neighbours = model.walk_sat_neighbours(data, labels, contexts, rng, weighted)
+        neighbours = model.get_neighbours(data, labels, contexts, rng, weighted)
         if len(neighbours) == 0:
             continue
         elif method != "walk_sat" and len(neighbours) < 2:
@@ -299,7 +284,6 @@ def learn_weighted_max_sat(
 
         if method == "adaptive_novelty_plus":
             next_model, score, correct_examples, wp = best_neighbour(
-                model,
                 prev_model,
                 correct_examples,
                 neighbours,
@@ -316,7 +300,6 @@ def learn_weighted_max_sat(
             )
         else:
             next_model, score, correct_examples = best_neighbour(
-                model,
                 prev_model,
                 correct_examples,
                 neighbours,
@@ -338,19 +321,7 @@ def learn_weighted_max_sat(
             best_scores.append(score)
             time_taken.append(time.time() - start)
         iterations += 1
-
-#    score_percentage = best_score * 100 / data.shape[0]
     print("Final Score: ", best_scores[-1] * 100 / data.shape[0])
-    
-    return (
-        [solutions[-1]],
-        [best_scores[-1]],
-        [time_taken[-1]],
-        iterations,
-    )
-#    return (
-#        solutions,
-#        best_scores,
-#        time_taken,
-#        iterations,
-#    )
+
+    # return ([solutions[-1]], [best_scores[-1]], [time_taken[-1]], iterations)
+    return (solutions, best_scores, time_taken, iterations)

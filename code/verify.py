@@ -1,11 +1,8 @@
-from typing import Optional
-
 import numpy as np
-from pysdd.iterator import SddIterator
 from pysdd.sdd import Vtree, SddManager
 
-from pysat_solver import solve_weighted_max_sat, get_value
-from type_def import MaxSatModel, Context, Clause
+from .pysat_solver import solve_weighted_max_sat, get_value, label_instance
+from .type_def import MaxSatModel, Context, Clause
 
 
 def find_solutions_rec(weights, selected, available, budget):
@@ -78,7 +75,7 @@ def count_solutions(n: int, model: MaxSatModel, context: Context):
     return logic.global_model_count()
 
 
-def get_recall_precision(
+def get_recall_precision_wmc(
     n: int, true_model: MaxSatModel, learned_model: MaxSatModel, context: Context
 ):
     manager = get_sdd_manager(n)
@@ -90,13 +87,7 @@ def get_recall_precision(
         l.global_model_count() for l in (true_logic, learned_logic, combined)
     )
     if learned_count == 0:
-        print(learned_model)
-        return -2, -2, -2
-    #    print(true_count, learned_count, combined_count)
-    #    learned_sol, cost = solve_weighted_max_sat(n, true_model, set(), pow(2,n))
-    #    print(len(learned_sol))
-    #    learned_sol, cost = solve_weighted_max_sat(n, learned_model, set(), pow(2,n))
-    #    print(len(learned_sol))
+        return -1, -1, -1
     TN = pow(2, n) - (true_count + learned_count - combined_count)
     accuracy = (TN + combined_count) * 100 / pow(2, n)
     recall = combined_count * 100 / true_count
@@ -104,11 +95,67 @@ def get_recall_precision(
     return recall, precision, accuracy
 
 
+def get_recall_precision_sampling(
+    n,
+    true_model: MaxSatModel,
+    learned_model: MaxSatModel,
+    context: Context,
+    sample_size,
+    seed,
+):
+    recall = get_tp_percentage_sampling(
+        n, true_model, learned_model, context, sample_size, seed
+    )
+    precision = get_tp_percentage_sampling(
+        n, learned_model, true_model, context, sample_size, seed
+    )
+
+    rng = np.random.RandomState(seed)
+    acc = 0
+    for _ in sample_size:
+        instance = rng.rand(n) > 0.5
+        for i in rng.choice(list(context), 1):
+            instance[abs(i) - 1] = i > 0
+        if label_instance(true_model, instance, context) == label_instance(
+            learned_model, instance, context
+        ):
+            acc += 1
+
+    accuracy = acc * 100 / sample_size
+
+    return recall, precision, accuracy
+
+
+def get_tp_percentage_sampling(
+    n,
+    true_model: MaxSatModel,
+    learned_model: MaxSatModel,
+    context: Context,
+    sample_size,
+    seed,
+):
+    rng = np.random.RandomState(seed)
+    tp = 0
+    sample = []
+    tmp_data, cst = solve_weighted_max_sat(n, true_model, context, sample_size * 10)
+    if len(tmp_data) > sample_size:
+        indices = list(rng.choice(range(len(tmp_data)), sample_size, replace=False))
+        for i in indices:
+            sample.append(tmp_data[i])
+    else:
+        sample = tmp_data
+    for example in sample:
+        if label_instance(learned_model, example, context):
+            tp += 1
+    percent = tp * 100 / len(sample)
+    return percent
+
+
 def simple():
     n = 2
     true_model = [(1, {1}), (1, {2})]
     learned_model = [(5, {1})]
-    r, p = get_recall_precision(n, true_model, learned_model, set())
+    r, p = get_recall_precision_wmc(n, true_model, learned_model, set())
     print(r, p)
 
 

@@ -2,12 +2,19 @@ import numpy as np
 import logging
 import pickle
 import os
+import itertools as it
+import copy
 
-from sample_models import generate_model
-from pysat_solver import solve_weighted_max_sat, label_instance
-from type_def import MaxSatModel, Context
+from .pysat_solver import solve_weighted_max_sat, label_instance
+from .type_def import MaxSatModel, Context
+from pysat.examples.fm import FM
+from pysat.formula import WCNF
+from scipy.special import binom
+from typing import List
+
 
 logger = logging.getLogger(__name__)
+_MIN_WEIGHT, _MAX_WEIGHT = 1, 101
 
 
 def generate_models(n, max_clause_length, num_hard, num_soft, model_seed):
@@ -37,14 +44,14 @@ def generate_contexts_and_data(
     pickle_var["data"] = []
     pickle_var["labels"] = []
     if num_context == 0:
-        data, labels = generate_data(n, model, set(), num_pos, num_neg, context_seed)
+        data, labels = random_data(n, model, set(), num_pos, num_neg, context_seed)
         pickle_var["contexts"].extend([set()] * len(data))
         pickle_var["data"].extend(data)
         pickle_var["labels"].extend(labels)
     else:
         for _ in range(num_context):
             context, data_seed = random_context(n, rng)
-            data, labels = generate_data(n, model, context, num_pos, num_neg, data_seed)
+            data, labels = random_data(n, model, context, num_pos, num_neg, data_seed)
             pickle_var["contexts"].extend([context] * len(data))
             pickle_var["data"].extend(data)
             pickle_var["labels"].extend(labels)
@@ -55,6 +62,104 @@ def generate_contexts_and_data(
     return param
 
 
+def is_entailed(wcnf, clause):
+    wcnf_new = wcnf.copy()
+    for literal in clause:
+        wcnf_new.append((-literal,))
+    fm = FM(wcnf_new, verbose=0)
+    #    print(wcnf_new.hard,fm.compute())
+    return not fm.compute()
+
+
+def _generate_all_clauses_up_to_length(num_vars, length):
+    flip_or_dont = lambda v: -(v - num_vars) if v > num_vars else v
+
+    lits = range(1, 2 * num_vars + 1)
+    clauses = set(
+        [
+            tuple(set(map(flip_or_dont, clause)))
+            for clause in it.combinations_with_replacement(lits, length)
+        ]
+    )
+
+    # This makes sure that all symmetries are accounted for...
+    must_be = sum(binom(2 * num_vars, l) for l in range(1, length + 1))
+    assert len(clauses) == must_be
+
+    # check entailment property of the added constraints
+
+    # ... except for impossible clauses like 'x and not x', let's delete them
+    def possible(clause):
+        for i in range(len(clause)):
+            for j in range(i + 1, len(clause)):
+                if clause[i] == -clause[j]:
+                    return False
+        return True
+
+    return list(sorted(filter(possible, clauses)))
+
+
+def get_random_clauses(wcnf, rng, clauses, num_clauses):
+    for trial in range(num_clauses * 10):
+        wcnf_copy = copy.deepcopy(wcnf)
+        selected_indices = []
+        checked_indices = []
+        n = num_clauses
+        while n > 0:
+            indices = [ind for ind in range(len(clauses)) if ind not in checked_indices]
+            i = rng.choice(indices)
+            checked_indices.append(i)
+            if not is_entailed(wcnf_copy, clauses[i]):
+                wcnf_copy.append(clauses[i])
+                selected_indices.append(i)
+                n = n - 1
+            if len(checked_indices) == len(clauses):
+                break
+        if n == 0:
+            return selected_indices
+    return []
+
+
+def generate_model(num_vars, clause_length, num_hard, num_soft, rng):
+    return list(sample_models(1, num_vars, clause_length, num_hard, num_soft, rng))[0]
+
+
+def sample_models(
+    num_models, num_vars, clause_length, num_hard, num_soft, rng
+) -> List[MaxSatModel]:
+    clauses = _generate_all_clauses_up_to_length(num_vars, clause_length)
+
+    if logger.isEnabledFor(logging.DEBUG):
+        # Print the clauses and quit
+        from pprint import pprint
+
+        pprint(clauses)
+
+    num_clauses = len(clauses)
+    total = num_hard + num_soft
+    assert total > 0
+
+    logger.info(f"{num_clauses} clauses total - {num_hard} hard and {num_soft} soft")
+
+    for m in range(num_models):
+        logger.info(f"generating model {m + 1} of {num_models}")
+        model = []
+        wcnf = WCNF()
+        indices = get_random_clauses(wcnf, rng, clauses, total)
+        if len(indices) < total:
+            print(len(clauses), total, len(indices))
+        assert len(indices) == total
+        hard_indices = list(sorted(rng.permutation(indices)[:num_hard]))
+        soft_indices = list(sorted(set(indices) - set(hard_indices)))
+
+        weights = rng.randint(_MIN_WEIGHT, _MAX_WEIGHT, size=num_soft)
+        for i in hard_indices:
+            model.append((None, set(clauses[i])))
+        for i, weight in zip(soft_indices, weights):
+            model.append((weight / 100, set(clauses[i])))
+        yield model
+
+
 def random_context(n, rng):
     clause = []
     indices = rng.choice(range(n), 2, replace=False)
@@ -63,30 +168,16 @@ def random_context(n, rng):
             clause.append(rng.choice([-1, 1]))
         else:
             clause.append(0)
-    context = []
+    context = set()
     for j, literal in enumerate(clause):
         if literal != 0:
-            context.append((j + 1) * literal)
+            context.add((j + 1) * literal)
     data_seed = rng.randint(1, 1000)
     return context, data_seed
 
 
-# def random_context(n, rng):
-#    random_index = rng.randint(1, pow(3, n))
-#    clause = ternary(random_index, n)
-#    clause = [-1 if j == 2 else j for j in clause]
-#
-#    context = []
-#    for j, literal in enumerate(clause):
-#        if literal != 0:
-#            context.append((j + 1) * literal)
-#    data_seed = rng.randint(1, 1000)
-#    return context, data_seed
-
-
-def generate_data(n, model: MaxSatModel, context: Context, num_pos, num_neg, seed):
+def random_data(n, model: MaxSatModel, context: Context, num_pos, num_neg, seed):
     rng = np.random.RandomState(seed)
-    labels = []
     data = []
     tmp_data, cst = solve_weighted_max_sat(n, model, context, num_pos * 10)
     if len(tmp_data) > num_pos:

@@ -5,8 +5,8 @@ Created on Sat Jan 25 10:44:15 2020
 
 @author: mohit
 """
-import MaxSAT
-from pysat_solver import solve_weighted_max_sat
+from .maxsat import MaxSAT
+from .pysat_solver import solve_weighted_max_sat
 import numpy as np
 
 

@@ -6,7 +6,7 @@ Created on Mon Mar  2 16:36:56 2020
 @author: mohit
 """
 import numpy as np
-from local_search import learn_weighted_max_sat
+from .local_search import learn_weighted_max_sat
 
 
 def example1():

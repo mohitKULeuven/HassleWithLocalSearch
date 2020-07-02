@@ -12,7 +12,7 @@ from pysat.examples.rc2 import RC2
 import numpy as np
 import csv
 
-from type_def import MaxSatModel, Clause, Instance, Context
+from .type_def import MaxSatModel, Clause, Instance, Context
 
 
 def solve_weighted_max_sat(
