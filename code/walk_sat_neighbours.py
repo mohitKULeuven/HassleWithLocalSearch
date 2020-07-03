@@ -5,12 +5,11 @@ Created on Sat Jan 25 10:44:15 2020
 
 @author: mohit
 """
-from .maxsat import MaxSAT
 from .pysat_solver import solve_weighted_max_sat
 import numpy as np
 
 
-def hc_sat_ex(maxsat: MaxSAT, instance, context, rng):
+def hc_sat_ex(maxsat, instance, context, rng):
     model = maxsat.maxSatModel()
     lst = []
     i = 0
@@ -26,7 +25,7 @@ def hc_sat_ex(maxsat: MaxSAT, instance, context, rng):
     return rng.choice(lst)
 
 
-def hc_not_sat_ex(maxsat: MaxSAT, instance, context, rng):
+def hc_not_sat_ex(maxsat, instance, context, rng):
     model = maxsat.maxSatModel()
     lst = []
     i = 0
@@ -42,7 +41,7 @@ def hc_not_sat_ex(maxsat: MaxSAT, instance, context, rng):
     return rng.choice(lst)
 
 
-def sc_sat_ex_not_opt(model: MaxSAT, instance, context, rng):
+def sc_sat_ex_not_opt(model, instance, context, rng):
     opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
     lst = []
     i = 0
@@ -59,7 +58,7 @@ def sc_sat_ex_not_opt(model: MaxSAT, instance, context, rng):
     return rng.choice(lst)
 
 
-def sc_sat_opt_not_ex(model: MaxSAT, instance, context, rng):
+def sc_sat_opt_not_ex(model, instance, context, rng):
     opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
     lst = []
     i = 0
@@ -76,7 +75,7 @@ def sc_sat_opt_not_ex(model: MaxSAT, instance, context, rng):
     return rng.choice(lst)
 
 
-def sc_not_sat_any(model: MaxSAT, instance, context, rng):
+def sc_not_sat_any(model, instance, context, rng):
     opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
     lst = []
     i = 0
@@ -93,7 +92,7 @@ def sc_not_sat_any(model: MaxSAT, instance, context, rng):
     return rng.choice(lst)
 
 
-def sc_sat_both(model: MaxSAT, instance, context, rng):
+def sc_sat_both(model, instance, context, rng):
     opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
     lst = []
     i = 0
@@ -110,7 +109,7 @@ def sc_sat_both(model: MaxSAT, instance, context, rng):
     return rng.choice(lst)
 
 
-def sc_not_sat_ex(maxsat: MaxSAT, instance, context, rng):
+def sc_not_sat_ex(maxsat, instance, context, rng):
     model = maxsat.maxSatModel()
     lst = []
     i = 0
@@ -126,7 +125,7 @@ def sc_not_sat_ex(maxsat: MaxSAT, instance, context, rng):
     return rng.choice(lst)
 
 
-def sc_sat_ex(maxsat: MaxSAT, instance, context, rng):
+def sc_sat_ex(maxsat, instance, context, rng):
     model = maxsat.maxSatModel()
     lst = []
     i = 0
@@ -176,7 +175,7 @@ def instance_to_literals(instance):
     return literals
 
 
-def neighbours_inf(model: MaxSAT, instance, context, rng):
+def neighbours_inf(model, instance, context, rng):
     i = hc_not_sat_ex(model, instance, context, rng)
     neighbours = []
     neighbour = model.deep_copy()
@@ -194,7 +193,7 @@ def neighbours_inf(model: MaxSAT, instance, context, rng):
     return neighbours
 
 
-def neighbours_sub(model: MaxSAT, instance, context, rng, w):
+def neighbours_sub(model, instance, context, rng, w):
     sol, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
     opt_literals = instance_to_literals(sol)
     exp_literals = instance_to_literals(instance)
@@ -240,7 +239,7 @@ def neighbours_sub(model: MaxSAT, instance, context, rng, w):
     return neighbours
 
 
-def neighbours_pos(model: MaxSAT, instance, context, rng, w):
+def neighbours_pos(model, instance, context, rng, w):
     exp_literals = instance_to_literals(instance)
 
     neighbours = []
