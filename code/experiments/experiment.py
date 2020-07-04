@@ -124,6 +124,7 @@ def evaluate(args):
             "time_taken",
             "cutoff",
             "noise_probability",
+            "iterations",
         ]
     )
     for n, h, s, seed in it.product(
@@ -163,10 +164,12 @@ def evaluate(args):
                 index = get_learned_model(pickle_var["time_taken"], max_t, t)
                 learned_model = None
                 time_taken = t
+                iteration = 0
                 score = -1
                 if index is not None:
                     learned_model = pickle_var["learned_model"][index]
                     time_taken = pickle_var["time_taken"][index]
+                    iteration = pickle_var["iterations"][index]
                     if learned_model:
                         score = pickle_var["score"][index]
 
@@ -195,6 +198,7 @@ def evaluate(args):
                             time_taken,
                             t,
                             p,
+                            iteration,
                         ]
                     )
                     bar.update(1)
@@ -234,6 +238,7 @@ def evaluate(args):
                         time_taken,
                         t,
                         p,
+                        iteration,
                     ]
                 )
                 bar.update(1)
@@ -290,7 +295,7 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
     if not os.path.exists("pickles/learned_model"):
         os.makedirs("pickles/learned_model")
     pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
-    tqdm.write(param + ": " + str(pickle_var["score"][-1]) + "\n")
+    # tqdm.write(param + ": " + str(pickle_var["score"][-1]) + "\n")
     return models[-1], time_taken[-1]
 
 
@@ -338,7 +343,7 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p):
     if not os.path.exists("pickles/learned_model"):
         os.makedirs("pickles/learned_model")
     pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
-    tqdm.write(param + ": " + str(pickle_var["score"]) + "\n")
+    # tqdm.write(param + ": " + str(pickle_var["score"]) + "\n")
     return learned_model, end - start
 
 

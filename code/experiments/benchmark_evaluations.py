@@ -134,6 +134,7 @@ def evaluate(args):
             "time_taken",
             "cutoff",
             "noise_probability",
+            "iterations",
         ]
     )
     if not args.filename:
@@ -187,6 +188,7 @@ def evaluate(args):
                     learned_model = pickle_var["learned_model"][i - 1]
                     time_taken = pickle_var["time_taken"][i - 1]
                     score = pickle_var["score"][i - 1]
+                    iteration = pickle_var["iterations"][i - 1]
                     contexts = pickle_var["contexts"]
 
                     global_context = set()
@@ -237,6 +239,8 @@ def evaluate(args):
                             inf_random,
                             time_taken,
                             t,
+                            p,
+                            iteration,
                         ]
                     )
                     bar.update(1)

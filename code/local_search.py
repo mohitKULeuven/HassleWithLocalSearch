@@ -274,8 +274,14 @@ def learn_weighted_max_sat(
     solutions = [model.deep_copy().maxSatModel()]
     best_scores = [score]
     time_taken = [time.time() - start]
-    iterations = 0
-    while score < cutoff_score and time.time() - start < cutoff_time:
+    iterations = []
+    i = 0
+    last_update = time.time()
+    while (
+        score < cutoff_score
+        and time.time() - start < cutoff_time
+        and time.time() - last_update < 900
+    ):
         neighbours = model.get_neighbours(data, labels, contexts, rng, weighted)
         if len(neighbours) == 0:
             continue
@@ -316,11 +322,14 @@ def learn_weighted_max_sat(
             )
         prev_model = model
         model = next_model
+        i += 1
+        iterations.append(i)
         if score > best_scores[-1]:
             solutions.append(model.deep_copy().maxSatModel())
             best_scores.append(score)
-            time_taken.append(time.time() - start)
-        iterations += 1
+            last_update = time.time()
+            time_taken.append(last_update - start)
+
     # print("Final Score: ", best_scores[-1] * 100 / data.shape[0])
 
     # return ([solutions[-1]], [best_scores[-1]], [time_taken[-1]], iterations)
