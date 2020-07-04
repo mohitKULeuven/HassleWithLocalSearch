@@ -1,4 +1,8 @@
 *.pyc
+*.pickle
+*.csv
+*.cnf
 __pycache__/
-pickles/
-results/
+/pickles/
+/results/
+/cnfs/

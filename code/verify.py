@@ -112,7 +112,7 @@ def get_recall_precision_sampling(
 
     rng = np.random.RandomState(seed)
     acc = 0
-    for _ in sample_size:
+    for _ in range(sample_size):
         instance = rng.rand(n) > 0.5
         for i in rng.choice(list(context), 1):
             instance[abs(i) - 1] = i > 0

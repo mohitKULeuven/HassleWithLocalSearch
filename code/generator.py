@@ -28,6 +28,8 @@ def generate_models(n, max_clause_length, num_hard, num_soft, model_seed):
     true_model = generate_model(n, max_clause_length, num_hard, num_soft, rng)
     pickle_var = {}
     pickle_var["true_model"] = true_model
+    if not os.path.exists("pickles/target_model"):
+        os.makedirs("pickles/target_model")
     pickle.dump(pickle_var, open("pickles/target_model/" + param + ".pickle", "wb"))
     return true_model, param
 
@@ -55,7 +57,8 @@ def generate_contexts_and_data(
             pickle_var["contexts"].extend([context] * len(data))
             pickle_var["data"].extend(data)
             pickle_var["labels"].extend(labels)
-
+    if not os.path.exists("pickles/contexts_and_data"):
+        os.makedirs("pickles/contexts_and_data")
     pickle.dump(
         pickle_var, open("pickles/contexts_and_data/" + param + ".pickle", "wb")
     )
@@ -66,6 +69,7 @@ def is_entailed(wcnf, clause):
     wcnf_new = wcnf.copy()
     for literal in clause:
         wcnf_new.append((-literal,))
+
     fm = FM(wcnf_new, verbose=0)
     #    print(wcnf_new.hard,fm.compute())
     return not fm.compute()

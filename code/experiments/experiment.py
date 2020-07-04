@@ -8,6 +8,7 @@ from datetime import datetime
 import os
 import json
 import time
+from tqdm import tqdm
 
 from code.type_def import MaxSatModel, Context
 from code.generator import generate_models, generate_contexts_and_data
@@ -19,6 +20,16 @@ from code.verify import get_recall_precision_wmc
 
 
 def generate(args):
+    iterations = (
+        len(args.num_vars)
+        * len(args.num_hard)
+        * len(args.num_soft)
+        * len(args.model_seeds)
+        * len(args.num_context)
+        * len(args.context_seeds)
+    )
+    bar = tqdm(total=iterations)
+    # bar = progressbar.ProgressBar(max_value=iterations, redirect_stdout=True)
     for n, h, s, seed in it.product(
         args.num_vars, args.num_hard, args.num_soft, args.model_seeds
     ):
@@ -28,10 +39,23 @@ def generate(args):
             tag = generate_contexts_and_data(
                 n, model, c, args.num_pos, args.num_neg, param, context_seed
             )
-            print(tag)
+            tqdm.write(tag)
+            bar.update(1)
 
 
 def learn(args):
+    iterations = (
+        len(args.num_vars)
+        * len(args.num_hard)
+        * len(args.num_soft)
+        * len(args.model_seeds)
+        * len(args.num_context)
+        * len(args.context_seeds)
+        * len(args.method)
+        * len(args.cutoff)
+        * len(args.noise)
+    )
+    bar = tqdm(total=iterations)
     for n, h, s, seed, c, context_seed, m, t, p in it.product(
         args.num_vars,
         args.num_hard,
@@ -55,11 +79,24 @@ def learn(args):
                 learn_model(h + s, m, t, param, args.weighted, p)
             except FileNotFoundError:
                 continue
+        bar.update(1)
 
 
 def evaluate(args):
+    iterations = (
+        len(args.num_vars)
+        * len(args.num_hard)
+        * len(args.num_soft)
+        * len(args.model_seeds)
+        * len(args.num_context)
+        * len(args.context_seeds)
+        * len(args.method)
+        * len(args.cutoff)
+        * len(args.noise)
+    )
+    bar = tqdm(total=iterations)
     folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)")
-    os.mkdir(f"results/{folder_name}")
+    os.makedirs(f"results/{folder_name}")
     with open(f"results/{folder_name}/arguments.txt", "w") as f:
         json.dump(args.__dict__, f, indent=2)
     csvfile = open(f"results/{folder_name}/evaluation.csv", "w")
@@ -134,7 +171,7 @@ def evaluate(args):
                         score = pickle_var["score"][index]
 
                 if index == last_index:
-                    print(c, m, t, score, accuracy, f1_score, infeasiblity, regret)
+                    # print(score, accuracy, f1_score, infeasiblity, regret)
                     filewriter.writerow(
                         [
                             n,
@@ -160,6 +197,7 @@ def evaluate(args):
                             p,
                         ]
                     )
+                    bar.update(1)
                     continue
                 last_index = index
 
@@ -172,8 +210,7 @@ def evaluate(args):
                         n, target_model, learned_model, global_context
                     )
                 f1_score = 2 * recall * precision / (recall + precision)
-
-                print(c, m, t, score, accuracy, f1_score, infeasiblity, regret)
+                # print(score, accuracy, f1_score, infeasiblity, regret)
                 filewriter.writerow(
                     [
                         n,
@@ -199,6 +236,8 @@ def evaluate(args):
                         p,
                     ]
                 )
+                bar.update(1)
+
     csvfile.close()
 
 
@@ -212,7 +251,7 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
         pickle_var = pickle.load(
             open("pickles/learned_model/" + param + ".pickle", "rb")
         )
-        print("Exists: " + param + "\n")
+        tqdm.write("Exists: " + param + "\n")
         return pickle_var["learned_model"], pickle_var["time_taken"]
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
@@ -248,9 +287,10 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
         pickle_var["time_taken"] = time_taken
         pickle_var["score"] = scores
         pickle_var["iterations"] = iterations
-
+    if not os.path.exists("pickles/learned_model"):
+        os.makedirs("pickles/learned_model")
     pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
-    print(param + ": " + str(pickle_var["score"][-1]) + "\n")
+    tqdm.write(param + ": " + str(pickle_var["score"][-1]) + "\n")
     return models[-1], time_taken[-1]
 
 
@@ -264,7 +304,7 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p):
         pickle_var = pickle.load(
             open("pickles/learned_model/" + param + ".pickle", "rb")
         )
-        print("Exists: " + param + ": " + str(pickle_var["score"]) + "\n")
+        tqdm.write("Exists: " + param + ": " + str(pickle_var["score"]) + "\n")
         return pickle_var["learned_model"], pickle_var["time_taken"]
 
     data = np.array(pickle_var["data"])
@@ -295,9 +335,10 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p):
     pickle_var["learned_model"] = [learned_model]
     pickle_var["time_taken"] = [end - start]
     pickle_var["score"] = [score * 100 / data.shape[0]]
-
+    if not os.path.exists("pickles/learned_model"):
+        os.makedirs("pickles/learned_model")
     pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
-    print(param + ": " + str(pickle_var["score"]) + "\n")
+    tqdm.write(param + ": " + str(pickle_var["score"]) + "\n")
     return learned_model, end - start
 
 
@@ -367,7 +408,6 @@ if __name__ == "__main__":
     )
     CLI.add_argument("--num_pos", type=int, default=2)
     CLI.add_argument("--num_neg", type=int, default=2)
-    CLI.add_argument("--sample_size", type=int, default=1000)
     CLI.add_argument(
         "--method",
         nargs="*",

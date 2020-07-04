@@ -270,7 +270,7 @@ def learn_weighted_max_sat(
     prev_model = model
 
     score, correct_examples = model.score(data, labels, contexts)
-    print("Initial Score: ", score * 100 / data.shape[0])
+    # print("Initial Score: ", score * 100 / data.shape[0])
     solutions = [model.deep_copy().maxSatModel()]
     best_scores = [score]
     time_taken = [time.time() - start]
@@ -321,7 +321,7 @@ def learn_weighted_max_sat(
             best_scores.append(score)
             time_taken.append(time.time() - start)
         iterations += 1
-    print("Final Score: ", best_scores[-1] * 100 / data.shape[0])
+    # print("Final Score: ", best_scores[-1] * 100 / data.shape[0])
 
     # return ([solutions[-1]], [best_scores[-1]], [time_taken[-1]], iterations)
     return (solutions, best_scores, time_taken, iterations)

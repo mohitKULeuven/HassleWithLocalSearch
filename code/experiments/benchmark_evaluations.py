@@ -22,12 +22,21 @@ from code.generator import generate_contexts_and_data
 from code.experiments.experiment import learn_model, learn_model_MILP, regret
 from code.pysat_solver import solve_weighted_max_sat, get_value, label_instance
 from code.verify import get_recall_precision_sampling
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 _MIN_WEIGHT, _MAX_WEIGHT = 1, 100
 
 
 def generate(args):
+    iterations = (
+        len(os.listdir(args.path))
+        * len(args.per_soft)
+        * len(args.model_seeds)
+        * len(args.num_context)
+        * len(args.context_seeds)
+    )
+    bar = tqdm(total=iterations)
     for cnf_file in os.listdir(args.path):
         if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
             model, n, m = cnf_to_model(args.path + cnf_file, args.num_constraints, 111)
@@ -37,6 +46,8 @@ def generate(args):
                     param = f"_{cnf_file}_num_constraints_{args.num_constraints}_per_soft_{s}_model_seed_{seed}"
                     pickle_var = {}
                     pickle_var["true_model"] = model
+                    if not os.path.exists("pickles/target_model"):
+                        os.makedirs("pickles/target_model")
                     pickle.dump(
                         pickle_var,
                         open("pickles/target_model/" + param + ".pickle", "wb"),
@@ -48,14 +59,26 @@ def generate(args):
                             n, model, c, args.num_pos, args.num_neg, param, context_seed
                         )
                         print(tag)
+                        bar.update(1)
 
 
 def learn(args):
+    if not args.filename:
+        args.filename = os.listdir(args.path)
+    iterations = (
+        len(args.filename)
+        * len(args.per_soft)
+        * len(args.model_seeds)
+        * len(args.num_context)
+        * len(args.context_seeds)
+        * len(args.method)
+        * len(args.cutoff)
+        * len(args.noise)
+    )
+    bar = tqdm(total=iterations)
     for c, context_seed, method, t, p in it.product(
         args.num_context, args.context_seeds, args.method, args.cutoff, args.noise
     ):
-        if not args.filename:
-            args.filename = os.listdir(args.path)
         for cnf_file in args.filename:
             if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
                 for s in args.per_soft:
@@ -65,12 +88,14 @@ def learn(args):
                         if method == "MILP":
                             try:
                                 learn_model_MILP(m, method, t, param, p)
+                                bar.update(1)
                             except FileNotFoundError:
                                 print("FileNotFound: " + param)
                                 continue
                         else:
                             try:
                                 learn_model(m, method, t, param, args.weighted, p)
+                                bar.update(1)
                             except FileNotFoundError:
                                 print("FileNotFound: " + param)
                                 continue
@@ -78,7 +103,7 @@ def learn(args):
 
 def evaluate(args):
     folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)")
-    os.mkdir(f"results/{folder_name}")
+    os.makedirs(f"results/{folder_name}")
     with open(f"results/{folder_name}/arguments.txt", "w") as f:
         json.dump(args.__dict__, f, indent=2)
     csvfile = open(f"results/{folder_name}/evaluation.csv", "w")
@@ -111,9 +136,20 @@ def evaluate(args):
             "noise_probability",
         ]
     )
+    if not args.filename:
+        args.filename = os.listdir(args.path)
+    iterations = (
+        len(args.filename)
+        * len(args.per_soft)
+        * len(args.model_seeds)
+        * len(args.num_context)
+        * len(args.context_seeds)
+        * len(args.method)
+        * len(args.cutoff)
+        * len(args.noise)
+    )
+    bar = tqdm(total=iterations)
     for s, seed in it.product(args.per_soft, args.model_seeds):
-        if not args.filename:
-            args.filename = os.listdir(args.path)
         for cnf_file in args.filename:
             if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
                 n, m = cnf_param(args.path + cnf_file, args.num_constraints)
@@ -175,20 +211,7 @@ def evaluate(args):
                     else:
                         pos_per_context = pickle_var["labels"].count(True) / c
                         neg_per_context = pickle_var["labels"].count(False) / c
-                    print(
-                        seed,
-                        context_seed,
-                        cnf_file,
-                        m,
-                        t,
-                        score,
-                        accuracy,
-                        f1_score,
-                        reg_random,
-                        regret,
-                        inf_random,
-                        infeasiblity,
-                    )
+                    # print(score, accuracy, reg_random, regret, inf_random, infeasiblity)
                     filewriter.writerow(
                         [
                             n,
@@ -216,6 +239,7 @@ def evaluate(args):
                             t,
                         ]
                     )
+                    bar.update(1)
     csvfile.close()
 
 
@@ -372,6 +396,7 @@ if __name__ == "__main__":
     )
     CLI.add_argument("--cutoff", nargs="*", type=int, default=[2, 10, 60])
     CLI.add_argument("--weighted", type=int, default=1)
+    CLI.add_argument("--noise", nargs="*", type=float, default=[0.05, 0.1, 0.2])
     args = CLI.parse_args()
 
     if args.function == "generate":
