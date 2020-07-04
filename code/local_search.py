@@ -12,6 +12,7 @@ from typing import List
 from .type_def import Clause
 from .maxsat import MaxSAT
 import copy
+from tqdm import tqdm
 
 
 def eval_neighbours(
@@ -268,8 +269,9 @@ def learn_weighted_max_sat(
             i += 1
     model = MaxSAT(c, w, l)
     prev_model = model
-
+    bar = tqdm("Score", total=100)
     score, correct_examples = model.score(data, labels, contexts)
+    bar.update(score * 100 / data.shape[0])
     # print("Initial Score: ", score * 100 / data.shape[0])
     solutions = [model.deep_copy().maxSatModel()]
     best_scores = [score]
@@ -277,6 +279,7 @@ def learn_weighted_max_sat(
     iterations = []
     i = 0
     last_update = time.time()
+
     while (
         score < cutoff_score
         and time.time() - start < cutoff_time
@@ -326,11 +329,13 @@ def learn_weighted_max_sat(
         iterations.append(i)
         if score > best_scores[-1]:
             solutions.append(model.deep_copy().maxSatModel())
+            bar.update((score - best_scores[-1]) * 100 / data.shape[0])
             best_scores.append(score)
             last_update = time.time()
             time_taken.append(last_update - start)
 
     # print("Final Score: ", best_scores[-1] * 100 / data.shape[0])
+    # tqdm.write(f"Final Score: {best_scores[-1] * 100 / data.shape[0]}")
 
     # return ([solutions[-1]], [best_scores[-1]], [time_taken[-1]], iterations)
     return (solutions, best_scores, time_taken, iterations)

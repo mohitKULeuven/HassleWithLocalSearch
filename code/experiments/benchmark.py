@@ -75,7 +75,7 @@ def learn(args):
         * len(args.cutoff)
         * len(args.noise)
     )
-    bar = tqdm(total=iterations)
+    bar = tqdm("Progress", total=iterations, position=0)
     for c, context_seed, method, t, p in it.product(
         args.num_context, args.context_seeds, args.method, args.cutoff, args.noise
     ):
