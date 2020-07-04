@@ -58,7 +58,7 @@ def generate(args):
                         tag = generate_contexts_and_data(
                             n, model, c, args.num_pos, args.num_neg, param, context_seed
                         )
-                        print(tag)
+                        tqdm.write(tag)
                         bar.update(1)
 
 
