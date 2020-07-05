@@ -283,7 +283,7 @@ def learn_weighted_max_sat(
     while (
         score < cutoff_score
         and time.time() - start < cutoff_time
-        and time.time() - last_update < 900
+        and time.time() - last_update < 3600
     ):
         neighbours = model.get_neighbours(data, labels, contexts, rng, weighted)
         if len(neighbours) == 0:
