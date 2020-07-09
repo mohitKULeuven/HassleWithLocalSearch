@@ -262,6 +262,9 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
     labels = np.array(pickle_var["labels"])
     contexts = pickle_var["contexts"]
 
+    inf = [True if l == -1 else False for l in labels]
+    labels = np.array([True if l == 1 else False for l in labels])
+
     if p != 0:
         rng = np.random.RandomState(111)
         for i, label in enumerate(labels):
@@ -276,6 +279,7 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
         method,
         int(len(labels) * 1),
         w,
+        inf,
         cutoff_time=cutoff,
     )
 
@@ -315,6 +319,9 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p):
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
     contexts = pickle_var["contexts"]
+
+    # inf = [True if l == -1 else False for l in labels]
+    labels = np.array([True if l == 1 else False for l in labels])
 
     if p != 0:
         rng = np.random.RandomState(111)
@@ -361,12 +368,12 @@ def evaluate_statistics(
 def regret(n, target_model, learned_model, context):
 
     sol, cost = solve_weighted_max_sat(n, target_model, context, 1)
-    opt_val = get_value(target_model, sol)
+    opt_val = get_value(target_model, sol, context)
     avg_regret = 0
     infeasible = 0
     learned_sols, cost = solve_weighted_max_sat(n, learned_model, context, 100)
     for learned_sol in learned_sols:
-        learned_opt_val = get_value(target_model, learned_sol)
+        learned_opt_val = get_value(target_model, learned_sol, context)
         if not learned_opt_val:
             infeasible += 1
         else:

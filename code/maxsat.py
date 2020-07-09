@@ -10,7 +10,13 @@ import numpy as np
 import copy
 from .type_def import MaxSatModel
 from .pysat_solver import solve_weighted_max_sat, get_value
-from .walk_sat_neighbours import neighbours_inf, neighbours_pos, neighbours_sub
+from .walk_sat_neighbours import (
+    neighbours_inf,
+    neighbours_pos,
+    neighbours_sub,
+    neighbours_pos_inf,
+    neighbours_pos_sub,
+)
 import time
 
 
@@ -40,6 +46,41 @@ class MaxSAT:
         self.l = l
         self.k = k
         self.n = n
+
+    def get_neighbours_detailed_labels(
+        self, data, labels, infeasible, contexts, rng, w
+    ):
+        x = list(enumerate(data))
+        rng.shuffle(x)
+        indices, data = zip(*x)
+
+        neighbours = []
+        index = 0
+        for i, example in enumerate(data):
+            if not self.is_correct(example, labels[indices[i]], contexts[indices[i]]):
+                index = i
+                break
+        picked_example = data[index]
+        val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
+        if not labels[indices[index]]:
+            if infeasible[indices[index]]:
+                neighbours = neighbours_pos_inf(
+                    self, picked_example, contexts[indices[index]], rng, w
+                )
+            else:
+                neighbours = neighbours_pos_sub(
+                    self, picked_example, contexts[indices[index]], rng, w
+                )
+        elif val is None:
+            neighbours = neighbours_inf(
+                self, picked_example, contexts[indices[index]], rng
+            )
+        else:
+            neighbours = neighbours_sub(
+                self, picked_example, contexts[indices[index]], rng, w
+            )
+
+        return neighbours
 
     def get_neighbours(self, data, labels, contexts, rng, w):
         x = list(enumerate(data))
@@ -185,10 +226,7 @@ class MaxSAT:
         sol, cost = solve_weighted_max_sat(self.n, self.maxSatModel(), context, 1)
         if not sol:
             return None
-        model = self.deep_copy().maxSatModel()
-        if context:
-            model.append((None, context))
-        return get_value(model, sol)
+        return get_value(self.maxSatModel(), sol, context)
 
     def is_same(self, model):
         c1, w1, l1 = zip(*sorted(zip(self.c, self.w, self.l)))

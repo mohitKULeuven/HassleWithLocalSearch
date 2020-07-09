@@ -5,7 +5,7 @@ import os
 import itertools as it
 import copy
 
-from .pysat_solver import solve_weighted_max_sat, label_instance
+from .pysat_solver import solve_weighted_max_sat, label_instance, is_infeasible
 from .type_def import MaxSatModel, Context
 from pysat.examples.fm import FM
 from pysat.formula import WCNF
@@ -191,7 +191,7 @@ def random_data(n, model: MaxSatModel, context: Context, num_pos, num_neg, seed)
     else:
         data = tmp_data
     num_pos = len(data)
-    labels = [True] * num_pos
+    labels = [1] * num_pos
     max_tries = 1000 * num_neg
     rng = np.random.RandomState(seed)
     for l in range(max_tries):
@@ -202,7 +202,10 @@ def random_data(n, model: MaxSatModel, context: Context, num_pos, num_neg, seed)
             continue
         if not label_instance(model, instance, context):
             data.append(list(instance))
-            labels.append(False)
+            if is_infeasible(model, instance, context):
+                labels.append(-1)
+            else:
+                labels.append(0)
             if len(data) >= num_neg + num_pos:
                 break
     return data, labels

@@ -227,6 +227,7 @@ def learn_weighted_max_sat(
     method,
     cutoff_score: int,
     weighted,
+    infeasible=None,
     p=0.1,
     wp=0.1,
     theta=0.17,
@@ -285,7 +286,12 @@ def learn_weighted_max_sat(
         and time.time() - start < cutoff_time
         # and time.time() - last_update < 3600
     ):
-        neighbours = model.get_neighbours(data, labels, contexts, rng, weighted)
+        if infeasible:
+            neighbours = model.get_neighbours_detailed_labels(
+                data, labels, infeasible, contexts, rng, weighted
+            )
+        else:
+            neighbours = model.get_neighbours(data, labels, contexts, rng, weighted)
         if len(neighbours) == 0:
             continue
         elif method != "walk_sat" and len(neighbours) < 2:

@@ -207,12 +207,13 @@ def evaluate(args):
                     f1_score = 0
                     if recall + precision != 0:
                         f1_score = 2 * recall * precision / (recall + precision)
+                    labels = [True if l == 1 else False for l in pickle_var["labels"]]
                     if c == 0:
-                        pos_per_context = pickle_var["labels"].count(True)
-                        neg_per_context = pickle_var["labels"].count(False)
+                        pos_per_context = labels.count(True)
+                        neg_per_context = labels.count(False)
                     else:
-                        pos_per_context = pickle_var["labels"].count(True) / c
-                        neg_per_context = pickle_var["labels"].count(False) / c
+                        pos_per_context = labels.count(True) / c
+                        neg_per_context = labels.count(False) / c
                     # print(score, accuracy, reg_random, regret, inf_random, infeasiblity)
                     filewriter.writerow(
                         [
@@ -308,11 +309,11 @@ def random_classifier(n, target_model, context, sample_size, seed):
     recall = tp * 100 / sample_size
 
     sol, cost = solve_weighted_max_sat(n, target_model, context, 1)
-    opt_val = get_value(target_model, sol)
+    opt_val = get_value(target_model, sol, context)
     avg_regret = 0
     infeasible = 0
     for learned_sol in learned_sols:
-        learned_opt_val = get_value(target_model, learned_sol)
+        learned_opt_val = get_value(target_model, np.ndarray(learned_sol), context)
         if not learned_opt_val:
             infeasible += 1
         else:

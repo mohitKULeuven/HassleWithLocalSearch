@@ -11,13 +11,14 @@ from pysat.formula import WCNF
 from pysat.examples.rc2 import RC2
 import numpy as np
 import csv
+import copy
 
 from .type_def import MaxSatModel, Clause, Instance, Context
 
 
 def solve_weighted_max_sat(
     n: int, model: MaxSatModel, context: Clause, num_sol, prev_sol=[]
-) -> Optional[Instance]:
+):
     """
     Solves a MaxSatModel and tries to return num_sol optimal solutions
     """
@@ -70,10 +71,11 @@ def solve_weighted_max_sat_file(
     return model
 
 
-def get_value(model: MaxSatModel, instance: Instance, context=[]) -> Optional[float]:
+def get_value(model: MaxSatModel, instance: Instance, context=None) -> Optional[float]:
     """
     Returns the weighted value of an instance
     """
+    model = copy.deepcopy(model)
     if context:
         model.append((None, context))
     value = 0
@@ -109,12 +111,19 @@ def get_cost(model: MaxSatModel, instance: Instance) -> Optional[float]:
 
 
 def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> bool:
-    value = get_value(model, instance)
+    value = get_value(model, instance, context)
     if value is None:
         return False
     best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
-    best_value = get_value(model, best_instance)
+    best_value = get_value(model, best_instance, context)
     return value == best_value
+
+
+def is_infeasible(model: MaxSatModel, instance: Instance, context: Context) -> bool:
+    value = get_value(model, instance, context)
+    if value is None:
+        return True
+    return False
 
 
 def represent_int(s):

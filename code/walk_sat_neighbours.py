@@ -273,3 +273,47 @@ def neighbours_pos(model, instance, context, rng, w):
                 neighbours.append(neighbour)
 
     return neighbours
+
+
+def neighbours_pos_inf(model, instance, context, rng, w):
+    exp_literals = instance_to_literals(instance)
+
+    neighbours = []
+
+    index = hc_sat_ex(model, instance, context, rng)
+    if index >= 0:
+        neighbours.extend(remove_literal(model, index, exp_literals))
+
+    return neighbours
+
+
+def neighbours_pos_sub(model, instance, context, rng, w):
+    exp_literals = instance_to_literals(instance)
+
+    neighbours = []
+
+    index = sc_not_sat_ex(model, instance, context, rng)
+    if index >= 0:
+        neighbour = model.deep_copy()
+        neighbour.c[index] = 1 - neighbour.c[index]
+        neighbours.append(neighbour)
+
+        if w == 1:
+            tmp_w = model.w[index]
+            if tmp_w < 0.99999 and model.c[index] == 0:
+                neighbour = model.deep_copy()
+                neighbour.w[index] = (tmp_w + 1) / 2
+                neighbours.append(neighbour)
+
+    index = sc_sat_ex(model, instance, context, rng)
+    if index >= 0:
+        neighbours.extend(remove_literal(model, index, exp_literals))
+
+        if w == 1:
+            tmp_w = model.w[index]
+            if tmp_w > 0.00001 and model.c[index] == 0:
+                neighbour = model.deep_copy()
+                neighbour.w[index] = tmp_w / 2
+                neighbours.append(neighbour)
+
+    return neighbours
