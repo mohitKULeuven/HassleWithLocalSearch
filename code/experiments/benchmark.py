@@ -101,7 +101,7 @@ def learn(args):
                                 continue
 
 
-def evaluate(args):
+def evaluate(args, bl):
     folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)")
     os.makedirs(f"results/{folder_name}")
     with open(f"results/{folder_name}/arguments.txt", "w") as f:
@@ -135,6 +135,7 @@ def evaluate(args):
             "cutoff",
             "noise_probability",
             "iterations",
+            "bl",
         ]
     )
     if not args.filename:
@@ -161,90 +162,92 @@ def evaluate(args):
                 )
                 target_model = pickle_var["true_model"]
                 max_t = max(args.cutoff)
-                for c, context_seed, method, t, p in it.product(
-                    args.num_context,
-                    args.context_seeds,
-                    args.method,
-                    args.cutoff,
-                    args.noise,
-                ):
-                    tag = (
-                        param
-                        + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}_method_{method}_cutoff_{max_t}_noise_{p}"
+                for c, context_seed in it.product(args.num_context, args.context_seeds):
+                    param += f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
+                    pickle_cnd = pickle.load(
+                        open("pickles/contexts_and_data/" + param + ".pickle", "rb")
                     )
-                    if args.weighted == 0:
-                        pickle_var = pickle.load(
-                            open("pickles/learned_model/" + tag + ".pickle", "rb")
-                        )
-                    else:
-                        pickle_var = pickle.load(
-                            open("pickles/learned_model/" + tag + ".pickle", "rb")
-                        )
-                    i = 0
-                    if t < max_t:
-                        for i, cutoff in enumerate(pickle_var["time_taken"]):
-                            if cutoff > t:
-                                break
-                    learned_model = pickle_var["learned_model"][i - 1]
-                    time_taken = pickle_var["time_taken"][i - 1]
-                    score = pickle_var["score"][i - 1]
-                    iteration = pickle_var["iterations"][i - 1]
-                    contexts = pickle_var["contexts"]
+                    for method, t, p in it.product(
+                        args.method, args.cutoff, args.noise
+                    ):
+                        param += f"_method_{m}_cutoff_{max_t}_noise_{p}"
+                        if bl == 1:
+                            param += "_bl"
+                        if args.weighted == 0:
+                            pickle_var = pickle.load(
+                                open("pickles/learned_model/" + param + ".pickle", "rb")
+                            )
+                        else:
+                            pickle_var = pickle.load(
+                                open("pickles/learned_model/" + param + ".pickle", "rb")
+                            )
+                        i = 0
+                        if t < max_t:
+                            for i, cutoff in enumerate(pickle_var["time_taken"]):
+                                if cutoff > t:
+                                    break
+                        learned_model = pickle_var["learned_model"][i - 1]
+                        time_taken = pickle_var["time_taken"][i - 1]
+                        score = pickle_var["score"][i - 1]
+                        iteration = pickle_var["iterations"][i - 1]
 
-                    global_context = set()
-                    for context in contexts:
-                        global_context.update(context)
-                    recall, precision, accuracy, regret = -1, -1, -1, -1
-                    if learned_model:
-                        recall, precision, accuracy, regret, infeasiblity, f1_random, reg_random, inf_random = evaluate_statistics_sampling(
-                            n,
-                            target_model,
-                            learned_model,
-                            global_context,
-                            args.sample_size,
-                            seed,
-                        )
-                    f1_score = 0
-                    if recall + precision != 0:
-                        f1_score = 2 * recall * precision / (recall + precision)
-                    labels = [True if l == 1 else False for l in pickle_var["labels"]]
-                    if c == 0:
-                        pos_per_context = labels.count(True)
-                        neg_per_context = labels.count(False)
-                    else:
+                        contexts = pickle_cnd["contexts"]
+                        global_context = set()
+                        for context in contexts:
+                            global_context.update(context)
+
+                        recall, precision, accuracy, regret = -1, -1, -1, -1
+                        if learned_model:
+                            recall, precision, accuracy, regret, infeasiblity, f1_random, reg_random, inf_random = evaluate_statistics_sampling(
+                                n,
+                                target_model,
+                                learned_model,
+                                global_context,
+                                args.sample_size,
+                                seed,
+                            )
+                        f1_score = 0
+                        if recall + precision != 0:
+                            f1_score = 2 * recall * precision / (recall + precision)
+                        labels = [
+                            True if l == 1 else False for l in pickle_cnd["labels"]
+                        ]
+                        if c == 0:
+                            c = 1
                         pos_per_context = labels.count(True) / c
                         neg_per_context = labels.count(False) / c
-                    # print(score, accuracy, reg_random, regret, inf_random, infeasiblity)
-                    filewriter.writerow(
-                        [
-                            n,
-                            m - num_soft,
-                            num_soft,
-                            seed,
-                            c,
-                            context_seed,
-                            args.num_pos,
-                            args.num_neg,
-                            pos_per_context,
-                            neg_per_context,
-                            method,
-                            score,
-                            recall,
-                            precision,
-                            accuracy,
-                            f1_score,
-                            regret,
-                            infeasiblity,
-                            f1_random,
-                            reg_random,
-                            inf_random,
-                            time_taken,
-                            t,
-                            p,
-                            iteration,
-                        ]
-                    )
-                    bar.update(1)
+
+                        filewriter.writerow(
+                            [
+                                n,
+                                m - num_soft,
+                                num_soft,
+                                seed,
+                                c,
+                                context_seed,
+                                args.num_pos,
+                                args.num_neg,
+                                pos_per_context,
+                                neg_per_context,
+                                method,
+                                score,
+                                recall,
+                                precision,
+                                accuracy,
+                                f1_score,
+                                regret,
+                                infeasiblity,
+                                f1_random,
+                                reg_random,
+                                inf_random,
+                                time_taken,
+                                t,
+                                p,
+                                iteration,
+                                bl,
+                            ]
+                        )
+                        bar.update(1)
     csvfile.close()
 
 

@@ -82,7 +82,7 @@ def learn(args):
         bar.update(1)
 
 
-def evaluate(args):
+def evaluate(args, bl):
     iterations = (
         len(args.num_vars)
         * len(args.num_hard)
@@ -131,50 +131,56 @@ def evaluate(args):
         args.num_vars, args.num_hard, args.num_soft, args.model_seeds
     ):
         param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
-        pickle_var = pickle.load(
+        target_model = pickle.load(
             open("pickles/target_model/" + param + ".pickle", "rb")
-        )
-        target_model = pickle_var["true_model"]
+        )["true_model"]
         max_t = max(args.cutoff)
         for c, context_seed, m, p in it.product(
             args.num_context, args.context_seeds, args.method, args.noise
         ):
-            tag = (
-                param
-                + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}_method_{m}_cutoff_{max_t}_noise_{p}"
+            param += f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
+            pickle_cnd = pickle.load(
+                open("pickles/contexts_and_data/" + param + ".pickle", "rb")
             )
-            if m == "MILP":
+            for m, p in it.product(args.method, args.noise):
+                param += f"_method_{m}_cutoff_{max_t}_noise_{p}"
+                if bl == 1:
+                    param += "_bl"
                 pickle_var = pickle.load(
-                    open("pickles/learned_model/" + tag + ".pickle", "rb")
+                    open("pickles/learned_model/" + param + ".pickle", "rb")
                 )
-            else:
-                pickle_var = pickle.load(
-                    open("pickles/learned_model/" + tag + ".pickle", "rb")
-                )
-            if c == 0:
-                pos_per_context = pickle_var["labels"].count(True)
-                neg_per_context = pickle_var["labels"].count(False)
-            else:
-                pos_per_context = pickle_var["labels"].count(True) / c
-                neg_per_context = pickle_var["labels"].count(False) / c
-            last_index = -2
-            recall, precision, accuracy = (-1, -1, -1)
-            regret, infeasiblity, f1_score = (-1, -1, -1)
-            for t in args.cutoff:
-                index = get_learned_model(pickle_var["time_taken"], max_t, t)
-                learned_model = None
-                time_taken = t
-                iteration = 0
-                score = -1
-                if index is not None:
-                    learned_model = pickle_var["learned_model"][index]
-                    time_taken = pickle_var["time_taken"][index]
-                    iteration = pickle_var["iterations"][index]
-                    if learned_model:
-                        score = pickle_var["score"][index]
+                if c == 0:
+                    c = 1
+                labels = [True if l == 1 else False for l in pickle_cnd["labels"]]
+                pos_per_context = labels.count(True) / c
+                neg_per_context = labels.count(False) / c
+                last_index = -2
+                recall, precision, accuracy = (-1, -1, -1)
+                regret, infeasiblity, f1_score = (-1, -1, -1)
+                for t in args.cutoff:
+                    index = get_learned_model(pickle_var["time_taken"], max_t, t)
+                    learned_model = None
+                    time_taken = t
+                    iteration = 0
+                    score = -1
+                    if index is not None:
+                        learned_model = pickle_var["learned_model"][index]
+                        time_taken = pickle_var["time_taken"][index]
+                        iteration = pickle_var["iterations"][index]
+                        if learned_model:
+                            score = pickle_var["score"][index]
 
-                if index == last_index:
-                    # print(score, accuracy, f1_score, infeasiblity, regret)
+                    if index != last_index:
+                        last_index = index
+                        contexts = pickle_cnd["contexts"]
+                        global_context = set()
+                        for context in contexts:
+                            global_context.update(context)
+                        if learned_model:
+                            recall, precision, accuracy, regret, infeasiblity = evaluate_statistics(
+                                n, target_model, learned_model, global_context
+                            )
+                        f1_score = 2 * recall * precision / (recall + precision)
                     filewriter.writerow(
                         [
                             n,
@@ -202,46 +208,6 @@ def evaluate(args):
                         ]
                     )
                     bar.update(1)
-                    continue
-                last_index = index
-
-                contexts = pickle_var["contexts"]
-                global_context = set()
-                for context in contexts:
-                    global_context.update(context)
-                if learned_model:
-                    recall, precision, accuracy, regret, infeasiblity = evaluate_statistics(
-                        n, target_model, learned_model, global_context
-                    )
-                f1_score = 2 * recall * precision / (recall + precision)
-                # print(score, accuracy, f1_score, infeasiblity, regret)
-                filewriter.writerow(
-                    [
-                        n,
-                        h,
-                        s,
-                        seed,
-                        c,
-                        context_seed,
-                        args.num_pos,
-                        args.num_neg,
-                        pos_per_context,
-                        neg_per_context,
-                        m,
-                        score,
-                        recall,
-                        precision,
-                        accuracy,
-                        f1_score,
-                        regret,
-                        infeasiblity,
-                        time_taken,
-                        t,
-                        p,
-                        iteration,
-                    ]
-                )
-                bar.update(1)
 
     csvfile.close()
 
@@ -250,14 +216,15 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
     pickle_var = pickle.load(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
-    param += f"_method_{method}_cutoff_{cutoff}_noise_{p}"
 
+    param += f"_method_{method}_cutoff_{cutoff}_noise_{p}"
     if os.path.exists("pickles/learned_model/" + param + ".pickle"):
         pickle_var = pickle.load(
             open("pickles/learned_model/" + param + ".pickle", "rb")
         )
         tqdm.write("Exists: " + param + "\n")
         return pickle_var["learned_model"], pickle_var["time_taken"]
+
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
     contexts = pickle_var["contexts"]
@@ -285,7 +252,7 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
 
     for i, score in enumerate(scores):
         scores[i] = scores[i] * 100 / data.shape[0]
-
+    pickle_var = {}
     if "cnf" in param:
         pickle_var["learned_model"] = [models[-1]]
         pickle_var["time_taken"] = [time_taken[-1]]
@@ -343,7 +310,7 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p):
             learned_label = label_instance(learned_model, instance, contexts[k])
             if label == learned_label:
                 score += 1
-
+    pickle_var = {}
     pickle_var["learned_model"] = [learned_model]
     pickle_var["time_taken"] = [end - start]
     pickle_var["score"] = [score * 100 / data.shape[0]]
@@ -447,4 +414,4 @@ if __name__ == "__main__":
         learn(args)
 
     elif args.function == "evaluate":
-        evaluate(args)
+        evaluate(args, 0)
