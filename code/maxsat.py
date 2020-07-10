@@ -47,23 +47,32 @@ class MaxSAT:
         self.k = k
         self.n = n
 
-    def get_neighbours_detailed_labels(
-        self, data, labels, infeasible, contexts, rng, w
-    ):
+    def get_neighbours(self, data, labels, contexts, rng, w, infeasible=None):
         x = list(enumerate(data))
         rng.shuffle(x)
         indices, data = zip(*x)
+        if not infeasible:
+            infeasible = [None] * len(indices)
 
         neighbours = []
         index = 0
         for i, example in enumerate(data):
-            if not self.is_correct(example, labels[indices[i]], contexts[indices[i]]):
+            if not self.is_correct(
+                example,
+                labels[indices[i]],
+                contexts[indices[i]],
+                infeasible[indices[i]],
+            ):
                 index = i
                 break
         picked_example = data[index]
         val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
         if not labels[indices[index]]:
-            if infeasible[indices[index]]:
+            if infeasible[indices[index]] is None:
+                neighbours = neighbours_pos(
+                    self, picked_example, contexts[indices[index]], rng, w
+                )
+            elif infeasible[indices[index]]:
                 neighbours = neighbours_pos_inf(
                     self, picked_example, contexts[indices[index]], rng, w
                 )
@@ -82,33 +91,33 @@ class MaxSAT:
 
         return neighbours
 
-    def get_neighbours(self, data, labels, contexts, rng, w):
-        x = list(enumerate(data))
-        rng.shuffle(x)
-        indices, data = zip(*x)
-
-        neighbours = []
-        index = 0
-        for i, example in enumerate(data):
-            if not self.is_correct(example, labels[indices[i]], contexts[indices[i]]):
-                index = i
-                break
-        picked_example = data[index]
-        val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
-        if not labels[indices[index]]:
-            neighbours = neighbours_pos(
-                self, picked_example, contexts[indices[index]], rng, w
-            )
-        elif val is None:
-            neighbours = neighbours_inf(
-                self, picked_example, contexts[indices[index]], rng
-            )
-        else:
-            neighbours = neighbours_sub(
-                self, picked_example, contexts[indices[index]], rng, w
-            )
-
-        return neighbours
+    # def get_neighbours(self, data, labels, contexts, rng, w):
+    #     x = list(enumerate(data))
+    #     rng.shuffle(x)
+    #     indices, data = zip(*x)
+    #
+    #     neighbours = []
+    #     index = 0
+    #     for i, example in enumerate(data):
+    #         if not self.is_correct(example, labels[indices[i]], contexts[indices[i]]):
+    #             index = i
+    #             break
+    #     picked_example = data[index]
+    #     val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
+    #     if not labels[indices[index]]:
+    #         neighbours = neighbours_pos(
+    #             self, picked_example, contexts[indices[index]], rng, w
+    #         )
+    #     elif val is None:
+    #         neighbours = neighbours_inf(
+    #             self, picked_example, contexts[indices[index]], rng
+    #         )
+    #     else:
+    #         neighbours = neighbours_sub(
+    #             self, picked_example, contexts[indices[index]], rng, w
+    #         )
+    #
+    #     return neighbours
 
     """
     when looking for a neighbour make sure that the 
@@ -150,51 +159,38 @@ class MaxSAT:
         neighbour.l[random_clause][random_literal] = int(rng.choice(values))
         return neighbour
 
-    def score(self, data, labels, contexts):
+    def score(self, data, labels, contexts, inf=None):
         """
         Number of correctly classified examples by the model
         """
+        if not inf:
+            inf = [None] * len(labels)
         score = 0
         correct_examples = [0] * data.shape[0]
         for i, example in enumerate(data):
-            if self.is_correct(example, labels[i], contexts[i]):
+            if self.is_correct(example, labels[i], inf[i], contexts[i]):
                 score += 1
                 correct_examples[i] = 1
         return score, correct_examples
 
-    def is_correct(self, example, label, context=[], optimum=-1):
+    def is_correct(self, example, label, context=[], inf=None, optimum=-1):
         val = get_value(self.maxSatModel(), example, context)
         if val is None:
-            return not label
-        else:
-            if optimum == -1:
-                optimum = self.optimal_value(context)
-            if val == optimum and label:
-                return True
-            elif not optimum and not label:
-                return True
-            elif not optimum and label:
-                return False
-            elif val < optimum and not label:
-                return True
-        return False
+            if inf is None:
+                return not label
+            else:
+                return inf
 
-    def is_corrects(self, example, label, context=[]):
-        get_val_time = time.time()
-        print("\n getting val")
-        val = get_value(self.maxSatModel(), example, context)
-        print("val_time: ", time.time() - get_val_time)
-        if val is None:
-            return not label
-        else:
-            get_opt_time = time.time()
-            print("getting opt")
+        if optimum == -1:
             optimum = self.optimal_value(context)
-            print("opt_time: ", time.time() - get_opt_time)
-            if val == optimum and label:
-                return True
-            if val < optimum and not label:
-                return True
+        if val == optimum and label:
+            return True
+        elif val < optimum and not label and not inf:
+            return True
+        # elif not optimum and not label:
+        #     return True
+        # elif not optimum and label:
+        #     return False
         return False
 
     def maxSatModel(self) -> MaxSatModel:

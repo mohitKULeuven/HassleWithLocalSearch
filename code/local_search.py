@@ -16,20 +16,23 @@ from tqdm import tqdm
 
 
 def eval_neighbours(
-    correct_examples, neighbours, data, labels, contexts, num_neighbours, rng
+    correct_examples, neighbours, data, labels, contexts, num_neighbours, rng, inf=None
 ):
+    if not inf:
+        inf = [None] * len(labels)
+
     neighbours = copy.copy(neighbours)
     next_correct_examples = np.zeros([len(neighbours), data.shape[0]])
 
     scores = [0 for i in range(len(neighbours))]
-    optimums = {}
-    for m, next_model in enumerate(neighbours):
+    for m, nbr in enumerate(neighbours):
+        optimums = {}
         for i, example in enumerate(data):
             key = "_".join(map(str, contexts[i]))
             if key not in optimums:
-                optimums[key] = next_model.optimal_value(contexts[i])
-            if correct_examples[i] == 1 and next_model.is_correct(
-                example, labels[i], contexts[i], optimums[key]
+                optimums[key] = nbr.optimal_value(contexts[i])
+            if correct_examples[i] == 1 and nbr.is_correct(
+                example, labels[i], contexts[i], inf=inf[i], optimum=optimums[key]
             ):
                 next_correct_examples[m, i] = 1
                 scores[m] += 1
@@ -38,7 +41,6 @@ def eval_neighbours(
     lst_models = []
     lst_correct_examples = []
     for _ in range(num_neighbours):
-
         lst_scores.append(max(scores))
         best_index = rng.choice(
             [i for i, v in enumerate(scores) if v == lst_scores[-1]]
@@ -53,7 +55,7 @@ def eval_neighbours(
                 if key not in optimums:
                     optimums[key] = lst_models[-1].optimal_value(contexts[i])
                 if lst_models[-1].is_correct(
-                    example, labels[i], contexts[i], optimums[key]
+                    example, labels[i], contexts[i], inf=inf[i], optimum=optimums[key]
                 ):
                     next_correct_examples[best_index, i] = 1
                     lst_scores[-1] += 1
@@ -61,10 +63,10 @@ def eval_neighbours(
     return lst_models, lst_scores, lst_correct_examples
 
 
-def walk_sat(correct_examples, neighbours, data, labels, contexts, p, rng):
+def walk_sat(correct_examples, neighbours, data, labels, contexts, p, rng, inf=None):
     prev_score = len(correct_examples)
     lst_models, lst_scores, lst_correct_examples = eval_neighbours(
-        correct_examples, neighbours, data, labels, contexts, 1, rng
+        correct_examples, neighbours, data, labels, contexts, 1, rng, inf
     )
     next_model, score, correct_examples = (
         lst_models[0],
@@ -75,15 +77,17 @@ def walk_sat(correct_examples, neighbours, data, labels, contexts, p, rng):
         return next_model, score, correct_examples
     elif rng.random_sample() < p:
         next_model = neighbours[rng.randint(0, len(neighbours))]
-        score, correct_examples = next_model.score(data, labels, contexts)
+        score, correct_examples = next_model.score(data, labels, contexts, inf)
         return next_model, score, correct_examples
     else:
         return next_model, score, correct_examples
 
 
-def novelty(prev_model, correct_examples, neighbours, data, labels, contexts, p, rng):
+def novelty(
+    prev_model, correct_examples, neighbours, data, labels, contexts, p, rng, inf=None
+):
     lst_models, lst_scores, lst_correct_examples = eval_neighbours(
-        correct_examples, neighbours, data, labels, contexts, 2, rng
+        correct_examples, neighbours, data, labels, contexts, 2, rng, inf
     )
     if not lst_models[0].is_same(prev_model):
         return lst_models[0], lst_scores[0], lst_correct_examples[0]
@@ -94,14 +98,23 @@ def novelty(prev_model, correct_examples, neighbours, data, labels, contexts, p,
 
 
 def novelty_plus(
-    prev_model, correct_examples, neighbours, data, labels, contexts, p, wp, rng
+    prev_model,
+    correct_examples,
+    neighbours,
+    data,
+    labels,
+    contexts,
+    p,
+    wp,
+    rng,
+    inf=None,
 ):
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
-        score, correct_examples = next_model.score(data, labels, contexts)
+        score, correct_examples = next_model.score(data, labels, contexts, inf)
         return next_model, score, correct_examples
     return novelty(
-        prev_model, correct_examples, neighbours, data, labels, contexts, p, rng
+        prev_model, correct_examples, neighbours, data, labels, contexts, p, rng, inf
     )
 
 
@@ -118,6 +131,7 @@ def adaptive_novelty_plus(
     phi,
     best_scores,
     rng,
+    inf=None,
 ):
     steps = int(len(labels) * theta)
     if len(best_scores) > steps:
@@ -127,10 +141,10 @@ def adaptive_novelty_plus(
             wp = wp - (wp * 2 * phi)
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
-        score, correct_examples = next_model.score(data, labels, contexts)
+        score, correct_examples = next_model.score(data, labels, contexts, inf)
         return next_model, score, correct_examples, wp
     next_model, score, correct_examples = novelty(
-        prev_model, correct_examples, neighbours, data, labels, contexts, p, rng
+        prev_model, correct_examples, neighbours, data, labels, contexts, p, rng, inf
     )
     return next_model, score, correct_examples, wp
 
@@ -149,6 +163,7 @@ def best_neighbour(
     phi,
     best_scores,
     rng,
+    inf=None,
 ):
     """
     Returns a model which breaks least of the 
@@ -156,23 +171,28 @@ def best_neighbour(
     """
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
-        score, correct_examples = next_model.score(data, labels, contexts)
-        if method == "adaptive_novelty_plus":
-            return next_model, score, correct_examples, wp
-        return next_model, score, correct_examples
+        score, correct_examples = next_model.score(data, labels, contexts, inf)
     else:
         if method == "walk_sat":
-            return walk_sat(
-                correct_examples, neighbours, data, labels, contexts, p, rng
+            next_model, score, correct_examples = walk_sat(
+                correct_examples, neighbours, data, labels, contexts, p, rng, inf
             )
 
         elif method == "novelty":
-            return novelty(
-                prev_model, correct_examples, neighbours, data, labels, contexts, p, rng
+            next_model, score, correct_examples = novelty(
+                prev_model,
+                correct_examples,
+                neighbours,
+                data,
+                labels,
+                contexts,
+                p,
+                rng,
+                inf,
             )
 
         elif method == "novelty_plus":
-            return novelty_plus(
+            next_model, score, correct_examples = novelty_plus(
                 prev_model,
                 correct_examples,
                 neighbours,
@@ -182,9 +202,10 @@ def best_neighbour(
                 p,
                 wp,
                 rng,
+                inf,
             )
         elif method == "adaptive_novelty_plus":
-            return adaptive_novelty_plus(
+            next_model, score, correct_examples, wp = adaptive_novelty_plus(
                 prev_model,
                 correct_examples,
                 neighbours,
@@ -197,7 +218,9 @@ def best_neighbour(
                 phi,
                 best_scores,
                 rng,
+                inf,
             )
+    return next_model, score, correct_examples, wp
 
 
 def ternary(n, length):
@@ -227,7 +250,7 @@ def learn_weighted_max_sat(
     method,
     cutoff_score: int,
     weighted,
-    infeasible=None,
+    inf=None,
     p=0.1,
     wp=0.1,
     theta=0.17,
@@ -271,7 +294,7 @@ def learn_weighted_max_sat(
     model = MaxSAT(c, w, l)
     prev_model = model
     bar = tqdm("Score", total=100)
-    score, correct_examples = model.score(data, labels, contexts)
+    score, correct_examples = model.score(data, labels, contexts, inf)
     bar.update(score * 100 / data.shape[0])
     # print("Initial Score: ", score * 100 / data.shape[0])
     solutions = [model.deep_copy().maxSatModel()]
@@ -286,49 +309,30 @@ def learn_weighted_max_sat(
         and time.time() - start < cutoff_time
         # and time.time() - last_update < 3600
     ):
-        if infeasible:
-            neighbours = model.get_neighbours_detailed_labels(
-                data, labels, infeasible, contexts, rng, weighted
-            )
-        else:
-            neighbours = model.get_neighbours(data, labels, contexts, rng, weighted)
+        neighbours = model.get_neighbours(data, labels, contexts, rng, weighted, inf)
         if len(neighbours) == 0:
             continue
         elif method != "walk_sat" and len(neighbours) < 2:
             continue
 
+        next_model, score, correct_examples, wp_new = best_neighbour(
+            prev_model,
+            correct_examples,
+            neighbours,
+            data,
+            labels,
+            contexts,
+            method,
+            p,
+            wp,
+            theta,
+            phi,
+            best_scores,
+            rng,
+            inf,
+        )
         if method == "adaptive_novelty_plus":
-            next_model, score, correct_examples, wp = best_neighbour(
-                prev_model,
-                correct_examples,
-                neighbours,
-                data,
-                labels,
-                contexts,
-                method,
-                p,
-                wp,
-                theta,
-                phi,
-                best_scores,
-                rng,
-            )
-        else:
-            next_model, score, correct_examples = best_neighbour(
-                prev_model,
-                correct_examples,
-                neighbours,
-                data,
-                labels,
-                contexts,
-                method,
-                p,
-                wp,
-                theta,
-                phi,
-                best_scores,
-                rng,
-            )
+            wp = wp_new
         prev_model = model
         model = next_model
         i += 1
