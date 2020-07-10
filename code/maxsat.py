@@ -168,7 +168,7 @@ class MaxSAT:
         score = 0
         correct_examples = [0] * data.shape[0]
         for i, example in enumerate(data):
-            if self.is_correct(example, labels[i], inf[i], contexts[i]):
+            if self.is_correct(example, labels[i], contexts[i], inf[i]):
                 score += 1
                 correct_examples[i] = 1
         return score, correct_examples
