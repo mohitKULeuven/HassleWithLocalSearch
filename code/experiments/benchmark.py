@@ -163,23 +163,30 @@ def evaluate(args, bl):
                 target_model = pickle_var["true_model"]
                 max_t = max(args.cutoff)
                 for c, context_seed in it.product(args.num_context, args.context_seeds):
-                    param += f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
+                    tag_cnd = (
+                        param
+                        + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
+                    )
                     pickle_cnd = pickle.load(
-                        open("pickles/contexts_and_data/" + param + ".pickle", "rb")
+                        open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
                     )
                     for method, t, p in it.product(
                         args.method, args.cutoff, args.noise
                     ):
-                        param += f"_method_{method}_cutoff_{max_t}_noise_{p}"
+                        tag_lm = tag_cnd + f"_method_{method}_cutoff_{max_t}_noise_{p}"
                         if bl == 1:
-                            param += "_bl"
+                            tag_lm += "_bl"
                         if args.weighted == 0:
                             pickle_var = pickle.load(
-                                open("pickles/learned_model/" + param + ".pickle", "rb")
+                                open(
+                                    "pickles/learned_model/" + tag_lm + ".pickle", "rb"
+                                )
                             )
                         else:
                             pickle_var = pickle.load(
-                                open("pickles/learned_model/" + param + ".pickle", "rb")
+                                open(
+                                    "pickles/learned_model/" + tag_lm + ".pickle", "rb"
+                                )
                             )
                         i = 0
                         if t < max_t:
