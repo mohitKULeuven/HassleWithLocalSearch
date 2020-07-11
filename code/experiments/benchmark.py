@@ -316,7 +316,7 @@ def random_classifier(n, target_model, context, sample_size, seed):
     avg_regret = 0
     infeasible = 0
     for learned_sol in learned_sols:
-        learned_opt_val = get_value(target_model, np.ndarray(learned_sol), context)
+        learned_opt_val = get_value(target_model, np.array(learned_sol), context)
         if not learned_opt_val:
             infeasible += 1
         else:
