@@ -170,7 +170,7 @@ def evaluate(args, bl):
                     for method, t, p in it.product(
                         args.method, args.cutoff, args.noise
                     ):
-                        param += f"_method_{m}_cutoff_{max_t}_noise_{p}"
+                        param += f"_method_{method}_cutoff_{max_t}_noise_{p}"
                         if bl == 1:
                             param += "_bl"
                         if args.weighted == 0:
