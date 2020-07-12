@@ -421,4 +421,4 @@ if __name__ == "__main__":
         learn(args)
 
     elif args.function == "evaluate":
-        evaluate(args)
+        evaluate(args, bl=0)
