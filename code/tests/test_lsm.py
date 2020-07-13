@@ -1,7 +1,8 @@
 from code.generator import sample_models, random_data, random_context
 import numpy as np
 import pickle
-from code.pysat_solver import get_value
+from code.pysat_solver import get_value, solve_weighted_max_sat
+from code.maxsat import MaxSAT
 
 
 def test_model_generator():
@@ -56,5 +57,22 @@ def test_model_copy():
     model2 = [(None, {1, 2, 3}), (0.5, {2, 4})]
     instance = np.zeros(5)
     context = {3, 4, 5}
-    get_value(model, instance, context)
+    v = get_value(model, instance, context)
+    assert v == None
     assert model == model2
+
+
+def test_maxsat():
+    model = [(None, {1, 2}), (1, {1})]
+    context = [set(), {-1}]
+    instance1 = np.array([1, 0])
+    instance2 = np.array([0, 1])
+    assert get_value(model, instance1, context[0]) == 1
+    assert get_value(model, instance1, context[1]) == None
+    assert get_value(model, instance2, context[0]) == 0
+    assert get_value(model, instance2, context[1]) == 0
+
+    mxst = MaxSAT()
+    mxst.from_max_sat_model(2, model)
+    assert mxst.optimal_value(context[0]) == 1
+    assert mxst.optimal_value(context[1]) == 0

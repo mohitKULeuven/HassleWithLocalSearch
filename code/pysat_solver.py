@@ -33,8 +33,8 @@ def solve_weighted_max_sat(
     cst = -1
 
     for m in s.enumerate():
-        while len(m) < n:
-            m.append(len(m) + 1)
+        # while len(m) < n:
+        #     m.append(len(m) + 1)
 
         if cst < 0:
             cst = s.cost

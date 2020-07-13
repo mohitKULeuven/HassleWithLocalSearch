@@ -22,9 +22,9 @@ import time
 
 class MaxSAT:
     def __init__(self, c=[], w=[], l=[[]]):
-        self.c = c  # tells wether a constraint is hard
-        self.w = w  # tells wether a constraint is soft, always 1?
-        self.l = l  # tells wether a literal j is present in clause i
+        self.c = c  # tells whether a constraint is hard
+        self.w = w  # tells whether a constraint is soft
+        self.l = l  # tells whether a literal j is present in clause i
         self.k = len(l)  # number of clauses
         self.n = len(l[0])  # number of variables
 
@@ -40,7 +40,7 @@ class MaxSAT:
                 w[i] = weight
 
             for literal in clause:
-                l[i][np.abs(literal)] = np.sign(literal)
+                l[i][np.abs(literal) - 1] = np.sign(literal)
         self.c = c
         self.w = w
         self.l = l
@@ -173,7 +173,7 @@ class MaxSAT:
                 correct_examples[i] = 1
         return score, correct_examples
 
-    def is_correct(self, example, label, context=[], inf=None, optimum=-1):
+    def is_correct(self, example, label, context=None, inf=None, optimum=-1):
         val = get_value(self.maxSatModel(), example, context)
         if val is None:
             if inf is None:

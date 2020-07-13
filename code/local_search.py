@@ -25,8 +25,9 @@ def eval_neighbours(
     next_correct_examples = np.zeros([len(neighbours), data.shape[0]])
 
     scores = [0 for i in range(len(neighbours))]
-    optimums = {}
+
     for m, nbr in enumerate(neighbours):
+        optimums = {}
         for i, example in enumerate(data):
             key = "_".join(map(str, contexts[i]))
             if key not in optimums:

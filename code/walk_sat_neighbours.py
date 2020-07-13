@@ -10,32 +10,26 @@ import numpy as np
 
 
 def hc_sat_ex(maxsat, instance, context, rng):
-    model = maxsat.maxSatModel()
     lst = []
-    i = 0
-    for w, clause in model:
+    for i, (w, clause) in enumerate(maxsat.maxSatModel()):
         covered = any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
         if w is None and covered:
             lst.append(i)
-        i += 1
     if not lst:
         return -1
     return rng.choice(lst)
 
 
 def hc_not_sat_ex(maxsat, instance, context, rng):
-    model = maxsat.maxSatModel()
     lst = []
-    i = 0
-    for w, clause in model:
+    for i, (w, clause) in enumerate(maxsat.maxSatModel()):
         covered = any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
         if w is None and not covered:
             lst.append(i)
-        i += 1
     if not lst:
         return -1
     return rng.choice(lst)
@@ -44,15 +38,13 @@ def hc_not_sat_ex(maxsat, instance, context, rng):
 def sc_sat_ex_not_opt(model, instance, context, rng):
     opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
     lst = []
-    i = 0
-    for w, clause in model.maxSatModel():
+    for i, (w, clause) in enumerate(model.maxSatModel()):
         ex_covered = any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
         opt_covered = any(not opt[abs(i) - 1] if i < 0 else opt[i - 1] for i in clause)
         if w is not None and ex_covered and not opt_covered:
             lst.append(i)
-        i += 1
     if not lst:
         return -1
     return rng.choice(lst)
@@ -61,15 +53,13 @@ def sc_sat_ex_not_opt(model, instance, context, rng):
 def sc_sat_opt_not_ex(model, instance, context, rng):
     opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
     lst = []
-    i = 0
-    for w, clause in model.maxSatModel():
+    for i, (w, clause) in enumerate(model.maxSatModel()):
         ex_covered = any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
         opt_covered = any(not opt[abs(i) - 1] if i < 0 else opt[i - 1] for i in clause)
         if w is not None and opt_covered and not ex_covered:
             lst.append(i)
-        i += 1
     if not lst:
         return -1
     return rng.choice(lst)
@@ -78,15 +68,13 @@ def sc_sat_opt_not_ex(model, instance, context, rng):
 def sc_not_sat_any(model, instance, context, rng):
     opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
     lst = []
-    i = 0
-    for w, clause in model.maxSatModel():
+    for i, (w, clause) in enumerate(model.maxSatModel()):
         ex_covered = any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
         opt_covered = any(not opt[abs(i) - 1] if i < 0 else opt[i - 1] for i in clause)
         if w is not None and not opt_covered and not ex_covered:
             lst.append(i)
-        i += 1
     if not lst:
         return -1
     return rng.choice(lst)
@@ -95,47 +83,39 @@ def sc_not_sat_any(model, instance, context, rng):
 def sc_sat_both(model, instance, context, rng):
     opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
     lst = []
-    i = 0
-    for w, clause in model.maxSatModel():
+    for i, (w, clause) in enumerate(model.maxSatModel()):
         ex_covered = any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
         opt_covered = any(not opt[abs(i) - 1] if i < 0 else opt[i - 1] for i in clause)
         if w is not None and opt_covered and ex_covered:
             lst.append(i)
-        i += 1
     if not lst:
         return -1
     return rng.choice(lst)
 
 
-def sc_not_sat_ex(maxsat, instance, context, rng):
-    model = maxsat.maxSatModel()
+def sc_not_sat_ex(model, instance, context, rng):
     lst = []
-    i = 0
-    for w, clause in model:
+    for i, (w, clause) in enumerate(model.maxSatModel()):
         ex_covered = any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
         if w is not None and not ex_covered:
             lst.append(i)
-        i += 1
     if not lst:
         return -1
     return rng.choice(lst)
 
 
-def sc_sat_ex(maxsat, instance, context, rng):
-    model = maxsat.maxSatModel()
+def sc_sat_ex(model, instance, context, rng):
     lst = []
-    i = 0
-    for w, clause in model:
+    for i, (w, clause) in enumerate(model.maxSatModel()):
         ex_covered = any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
         if w is not None and ex_covered:
             lst.append(i)
-        i += 1
     if not lst:
         return -1
     return rng.choice(lst)
