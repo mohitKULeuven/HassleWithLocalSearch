@@ -73,7 +73,7 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
             if rng.random_sample() < p:
                 labels[i] = not label
 
-    models, scores, time_taken, iterations = learn_weighted_max_sat(
+    models, scores, time_taken, iterations, num_nghbr = learn_weighted_max_sat(
         num_constraints,
         data,
         labels,
@@ -92,12 +92,12 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
         pickle_var["learned_model"] = [models[-1]]
         pickle_var["time_taken"] = [time_taken[-1]]
         pickle_var["score"] = [scores[-1]]
-        pickle_var["iterations"] = iterations
     else:
         pickle_var["learned_model"] = models
         pickle_var["time_taken"] = time_taken
         pickle_var["score"] = scores
-        pickle_var["iterations"] = iterations
+    pickle_var["iterations"] = iterations
+    pickle_var["num_neighbour"] = num_nghbr
     if not os.path.exists("pickles/learned_model"):
         os.makedirs("pickles/learned_model")
     pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))

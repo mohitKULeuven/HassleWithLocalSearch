@@ -303,6 +303,7 @@ def learn_weighted_max_sat(
     time_taken = [time.time() - start]
     iterations = [0]
     i = 0
+    num_neighbours = 0
     # last_update = time.time()
 
     while (
@@ -310,12 +311,13 @@ def learn_weighted_max_sat(
         and time.time() - start < cutoff_time
         # and time.time() - last_update < 3600
     ):
-        neighbours = model.get_neighbours(data, labels, contexts, rng, weighted, inf)
+        # neighbours = model.get_neighbours(data, labels, contexts, rng, weighted, inf)
+        neighbours = model.valid_neighbours()
         if len(neighbours) == 0:
             continue
         elif method != "walk_sat" and len(neighbours) < 2:
             continue
-
+        num_neighbours += len(neighbours)
         next_model, score, correct_examples, wp_new = best_neighbour(
             prev_model,
             correct_examples,
@@ -349,4 +351,4 @@ def learn_weighted_max_sat(
     # tqdm.write(f"Final Score: {best_scores[-1] * 100 / data.shape[0]}")
 
     # return ([solutions[-1]], [best_scores[-1]], [time_taken[-1]], iterations)
-    return (solutions, best_scores, time_taken, iterations)
+    return (solutions, best_scores, time_taken, iterations, num_neighbours)

@@ -66,7 +66,7 @@ class MaxSAT:
                 index = i
                 break
         picked_example = data[index]
-        val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
+        # val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
         if not labels[indices[index]]:
             if infeasible[indices[index]] is None:
                 neighbours = neighbours_pos(
@@ -80,7 +80,10 @@ class MaxSAT:
                 neighbours = neighbours_pos_sub(
                     self, picked_example, contexts[indices[index]], rng, w
                 )
-        elif val is None:
+        elif (
+            get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
+            is None
+        ):
             neighbours = neighbours_inf(
                 self, picked_example, contexts[indices[index]], rng
             )

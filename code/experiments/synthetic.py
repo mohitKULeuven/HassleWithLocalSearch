@@ -238,7 +238,7 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
             if rng.random_sample() < p:
                 labels[i] = not label
 
-    models, scores, time_taken, iterations = learn_weighted_max_sat(
+    models, scores, time_taken, iterations, num_nghbr = learn_weighted_max_sat(
         num_constraints,
         data,
         labels,
@@ -257,15 +257,17 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
         pickle_var["learned_model"] = [models[-1]]
         pickle_var["time_taken"] = [time_taken[-1]]
         pickle_var["score"] = [scores[-1]]
-        pickle_var["iterations"] = iterations
     else:
         pickle_var["learned_model"] = models
         pickle_var["time_taken"] = time_taken
         pickle_var["score"] = scores
-        pickle_var["iterations"] = iterations
+    pickle_var["iterations"] = iterations
+    pickle_var["num_neighbour"] = num_nghbr
     if not os.path.exists("pickles/learned_model"):
         os.makedirs("pickles/learned_model")
-    pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
+    pickle.dump(
+        pickle_var, open("pickles/learned_model/" + param + "_naive.pickle", "wb")
+    )
     # tqdm.write(param + ": " + str(pickle_var["score"][-1]) + "\n")
     return models[-1], time_taken[-1]
 
@@ -373,15 +375,13 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     CLI = argparse.ArgumentParser()
     CLI.add_argument("--function", type=str, default="evaluate")
-    CLI.add_argument("--num_vars", nargs="*", type=int, default=[5, 10, 20])
-    CLI.add_argument("--num_hard", nargs="*", type=int, default=[5, 10, 20])
-    CLI.add_argument("--num_soft", nargs="*", type=int, default=[5])
+    CLI.add_argument("--num_vars", nargs="*", type=int, default=[10])
+    CLI.add_argument("--num_hard", nargs="*", type=int, default=[10])
+    CLI.add_argument("--num_soft", nargs="*", type=int, default=[10])
     CLI.add_argument(
         "--model_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
     )
-    CLI.add_argument(
-        "--num_context", nargs="*", type=int, default=[10, 25, 50, 100, 150]
-    )
+    CLI.add_argument("--num_context", nargs="*", type=int, default=[100])
     CLI.add_argument(
         "--context_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
     )
