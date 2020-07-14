@@ -125,6 +125,7 @@ def evaluate(args, bl):
             "cutoff",
             "noise_probability",
             "iterations",
+            "neighbours",
         ]
     )
     for n, h, s, seed in it.product(
@@ -162,11 +163,13 @@ def evaluate(args, bl):
                     learned_model = None
                     time_taken = t
                     iteration = 0
+                    num_nbr = 0
                     score = -1
                     if index is not None:
                         learned_model = pickle_var["learned_model"][index]
                         time_taken = pickle_var["time_taken"][index]
                         iteration = pickle_var["iterations"][index]
+                        num_nbr = pickle_var["num_neighbour"][index]
                         if learned_model:
                             score = pickle_var["score"][index]
 
@@ -205,6 +208,7 @@ def evaluate(args, bl):
                             t,
                             p,
                             iteration,
+                            num_nbr,
                         ]
                     )
                     bar.update(1)
