@@ -265,9 +265,7 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
     pickle_var["num_neighbour"] = num_nghbr
     if not os.path.exists("pickles/learned_model"):
         os.makedirs("pickles/learned_model")
-    pickle.dump(
-        pickle_var, open("pickles/learned_model/" + param + "_naive.pickle", "wb")
-    )
+    pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
     # tqdm.write(param + ": " + str(pickle_var["score"][-1]) + "\n")
     return models[-1], time_taken[-1]
 
