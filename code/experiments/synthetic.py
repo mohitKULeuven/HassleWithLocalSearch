@@ -136,9 +136,7 @@ def evaluate(args, bl):
             open("pickles/target_model/" + param + ".pickle", "rb")
         )["true_model"]
         max_t = max(args.cutoff)
-        for c, context_seed, m, p in it.product(
-            args.num_context, args.context_seeds, args.method, args.noise
-        ):
+        for c, context_seed in it.product(args.num_context, args.context_seeds):
             tag_cnd = (
                 param
                 + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
@@ -168,7 +166,6 @@ def evaluate(args, bl):
                     iteration = 0
                     # num_nbr = 0
                     score = -1
-                    print()
                     if index is not None:
                         learned_model = pickle_var["learned_model"][index]
                         time_taken = pickle_var["time_taken"][index]
