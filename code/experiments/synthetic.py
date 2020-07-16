@@ -168,10 +168,12 @@ def evaluate(args, bl):
                     iteration = 0
                     # num_nbr = 0
                     score = -1
+                    print()
                     if index is not None:
                         learned_model = pickle_var["learned_model"][index]
                         time_taken = pickle_var["time_taken"][index]
-                        iteration = pickle_var["iterations"][index]
+                        if m != "MILP":
+                            iteration = pickle_var["iterations"][index]
                         # num_nbr = pickle_var["num_neighbour"][index]
                         if learned_model:
                             score = pickle_var["score"][index]
