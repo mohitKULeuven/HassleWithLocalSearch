@@ -46,22 +46,23 @@ def convert_to_logic(manager: SddManager, n: int, model: MaxSatModel, context: C
     else:
         value = get_value(model, best_solution, context)
         hard_constraints = [c for w, c in model if not w]
-        soft_constraints = [(w, c) for w, c in model if w is not None]
-        weights = [t[0] for t in soft_constraints]
-        assignments = find_weight_assignments(weights, value)
 
         hard_result = manager.true()
         for clause in hard_constraints:
             hard_result &= clause_to_sdd(clause, manager)
 
-        soft_result = manager.false()
-        for assignment in assignments:
-            assignment_result = manager.true()
-            for i in assignment:
-                assignment_result &= clause_to_sdd(soft_constraints[i][1], manager)
-            soft_result |= assignment_result
-
-        return hard_result & soft_result
+        soft_constraints = [(w, c) for w, c in model if w is not None]
+        if len(soft_constraints) > 0:
+            weights = [t[0] for t in soft_constraints]
+            assignments = find_weight_assignments(weights, value)
+            soft_result = manager.false()
+            for assignment in assignments:
+                assignment_result = manager.true()
+                for i in assignment:
+                    assignment_result &= clause_to_sdd(soft_constraints[i][1], manager)
+                soft_result |= assignment_result
+            return hard_result & soft_result
+        return hard_result
 
 
 def count_solutions(n: int, model: MaxSatModel, context: Context):
