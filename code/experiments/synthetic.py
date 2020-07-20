@@ -218,12 +218,123 @@ def evaluate(args, bl):
     csvfile.close()
 
 
+def evaluate_nbr(args, bl):
+    iterations = (
+        len(args.num_vars)
+        * len(args.num_hard)
+        * len(args.num_soft)
+        * len(args.model_seeds)
+        * len(args.num_context)
+        * len(args.context_seeds)
+        * len(args.method)
+        * len(args.cutoff)
+        * len(args.noise)
+    )
+    bar = tqdm(total=iterations)
+    folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)_nbr")
+    os.makedirs(f"results/{folder_name}")
+    with open(f"results/{folder_name}/arguments.txt", "w") as f:
+        json.dump(args.__dict__, f, indent=2)
+    csvfile = open(f"results/{folder_name}/evaluation.csv", "w")
+    filewriter = csv.writer(csvfile, delimiter=",")
+    filewriter.writerow(
+        [
+            "num_vars",
+            "num_hard",
+            "num_soft",
+            "model_seed",
+            "num_context",
+            "context_seed",
+            "num_pos",
+            "num_neg",
+            "method",
+            "score",
+            "accuracy",
+            "regret",
+            "infeasiblity",
+            "time_taken",
+            "cutoff",
+            "noise_probability",
+            "iterations",
+            "neighbours",
+        ]
+    )
+    for n, h, s, seed in it.product(
+        args.num_vars, args.num_hard, args.num_soft, args.model_seeds
+    ):
+        param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
+        target_model = pickle.load(
+            open("pickles/target_model/" + param + ".pickle", "rb")
+        )["true_model"]
+        max_t = max(args.cutoff)
+        for c, context_seed in it.product(args.num_context, args.context_seeds):
+            tag_cnd = (
+                param
+                + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
+            )
+            pickle_cnd = pickle.load(
+                open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
+            )
+            for m, p in it.product(args.method, args.noise):
+                tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
+                if bl == 1:
+                    tag += "_bl"
+                pickle_var = pickle.load(
+                    open("pickles/learned_model/" + tag + ".pickle", "rb")
+                )
+                recall, precision, accuracy = (-1, -1, -1)
+                regret, infeasiblity, f1_score = (-1, -1, -1)
+                iteration = 0
+                score = -1
+                learned_model = pickle_var["learned_model"][-1]
+                time_taken = pickle_var["time_taken"][-1]
+                if m != "MILP":
+                    iteration = pickle_var["iterations"][-1]
+                num_nbr = pickle_var["num_neighbour"]
+                if learned_model:
+                    score = pickle_var["score"][-1]
+
+                contexts = pickle_cnd["contexts"]
+                global_context = set()
+                for context in contexts:
+                    global_context.update(context)
+                if learned_model:
+                    recall, precision, accuracy, regret, infeasiblity = evaluate_statistics(
+                        n, target_model, learned_model, global_context
+                    )
+                filewriter.writerow(
+                    [
+                        n,
+                        h,
+                        s,
+                        seed,
+                        c,
+                        context_seed,
+                        args.num_pos,
+                        args.num_neg,
+                        m,
+                        score,
+                        accuracy,
+                        regret,
+                        infeasiblity,
+                        time_taken,
+                        max_t,
+                        p,
+                        iteration,
+                        num_nbr,
+                    ]
+                )
+                bar.update(1)
+
+    csvfile.close()
+
+
 def learn_model(num_constraints, method, cutoff, param, w, p):
     pickle_var = pickle.load(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
 
-    param += f"_method_{method}_cutoff_{cutoff}_noise_{p}"
+    param += f"_method_{method}_cutoff_{cutoff}_noise_{p}_naive"
     if os.path.exists("pickles/learned_model/" + param + ".pickle"):
         pickle_var = pickle.load(
             open("pickles/learned_model/" + param + ".pickle", "rb")

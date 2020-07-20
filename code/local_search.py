@@ -311,8 +311,8 @@ def learn_weighted_max_sat(
         and time.time() - start < cutoff_time
         # and time.time() - last_update < 3600
     ):
-        neighbours = model.get_neighbours(data, labels, contexts, rng, weighted, inf)
-        # neighbours = model.valid_neighbours()
+        # neighbours = model.get_neighbours(data, labels, contexts, rng, weighted, inf)
+        neighbours = model.valid_neighbours()
         if len(neighbours) == 0:
             continue
         elif method != "walk_sat" and len(neighbours) < 2:
