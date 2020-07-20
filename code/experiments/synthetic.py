@@ -334,7 +334,7 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
 
-    param += f"_method_{method}_cutoff_{cutoff}_noise_{p}_naive"
+    param += f"_method_{method}_cutoff_{cutoff}_noise_{p}"
     if os.path.exists("pickles/learned_model/" + param + ".pickle"):
         pickle_var = pickle.load(
             open("pickles/learned_model/" + param + ".pickle", "rb")
