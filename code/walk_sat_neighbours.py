@@ -140,7 +140,10 @@ def add_literal(model, clause_index, literals):
         if model.l[clause_index][j] == 0:
             neighbour = model.deep_copy()
             neighbour.l[clause_index][j] = int(np.sign(literal))
-            if any(neighbour.l[clause_index]):
+            if (
+                any(neighbour.l[clause_index])
+                and num_literals_in_clause(neighbour.l[clause_index]) <= 3
+            ):
                 neighbours.append(neighbour)
     return neighbours
 
@@ -155,6 +158,10 @@ def instance_to_literals(instance):
     return literals
 
 
+def num_literals_in_clause(clause):
+    return sum(map(abs, clause))
+
+
 def neighbours_inf(model, instance, context, rng):
     i = hc_not_sat_ex(model, instance, context, rng)
     neighbours = []
@@ -167,7 +174,7 @@ def neighbours_inf(model, instance, context, rng):
         for val in values:
             neighbour = model.deep_copy()
             neighbour.l[i][j] = val
-            if any(neighbour.l[i]):
+            if any(neighbour.l[i]) and num_literals_in_clause(neighbour.l[i]) <= 3:
                 neighbours.append(neighbour)
 
     return neighbours
