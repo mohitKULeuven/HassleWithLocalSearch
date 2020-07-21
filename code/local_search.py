@@ -289,7 +289,7 @@ def learn_weighted_max_sat(
         clause = []
         # for _ in range(data.shape[1]):
         #     clause.append(int(rng.choice([-1, 0, 1])))
-        sample = rng.sample(list(range(data.shape[1])), 3)
+        sample = rng.choice(data.shape[1], 3, replace=False)
         for j in range(data.shape[1]):
             if j in sample:
                 clause.append(int(rng.choice([-1, 1])))
