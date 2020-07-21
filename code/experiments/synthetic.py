@@ -530,3 +530,7 @@ if __name__ == "__main__":
 
     elif args.function == "evaluate":
         evaluate(args, 0)
+
+    elif args.function == "nbr":
+        evaluate_nbr(args, 0)
+        evaluate_nbr(args, 1)
