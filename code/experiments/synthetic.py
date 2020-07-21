@@ -278,7 +278,7 @@ def evaluate_nbr(args, bl):
             for m, p in it.product(args.method, args.noise):
                 tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
                 if bl == 1:
-                    tag += "_bl"
+                    tag += "_naive"
                 pickle_var = pickle.load(
                     open("pickles/learned_model/" + tag + ".pickle", "rb")
                 )
