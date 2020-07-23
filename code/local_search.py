@@ -243,8 +243,30 @@ def ternary(n, length):
             return ternary(e, length - 1) + [q]
 
 
+def random_model(num_var, num_constraints, clause_len, seed) -> MaxSAT:
+    rng = np.random.RandomState(seed)
+    c = [rng.randint(0, 2) for i in range(num_constraints)]
+    w = [1 for i in range(num_constraints)]
+    l = []
+    i = 1
+    while i <= num_constraints:
+        clause = []
+        sample = rng.choice(num_var, clause_len, replace=False)
+        for j in range(num_var):
+            if j in sample:
+                clause.append(int(rng.choice([-1, 0, 1])))
+            else:
+                clause.append(0)
+
+        if clause not in l:
+            l.append(clause)
+            i += 1
+    return MaxSAT(c, w, l)
+
+
 def learn_weighted_max_sat(
     m: int,
+    clause_len: int,
     data: np.ndarray,
     labels: np.ndarray,
     contexts: List[Clause],
@@ -280,26 +302,7 @@ def learn_weighted_max_sat(
     # starting with a random model
 
     rng = np.random.RandomState(seed)
-    c = [rng.randint(0, 2) for i in range(m)]
-    w = [1 for i in range(m)]
-
-    l = []
-    i = 1
-    while i <= m:
-        clause = []
-        # for _ in range(data.shape[1]):
-        #     clause.append(int(rng.choice([-1, 0, 1])))
-        sample = rng.choice(data.shape[1], 3, replace=False)
-        for j in range(data.shape[1]):
-            if j in sample:
-                clause.append(int(rng.choice([-1, 1])))
-            else:
-                clause.append(0)
-
-        if clause not in l:
-            l.append(clause)
-            i += 1
-    model = MaxSAT(c, w, l)
+    model = random_model(data.shape[1], m, clause_len, seed)
     prev_model = model
     bar = tqdm("Score", total=100)
     score, correct_examples = model.score(data, labels, contexts, inf)
