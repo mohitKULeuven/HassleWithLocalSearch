@@ -357,6 +357,7 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
 
     models, scores, time_taken, iterations, num_nghbr = learn_weighted_max_sat(
         num_constraints,
+        3,
         data,
         labels,
         contexts,
