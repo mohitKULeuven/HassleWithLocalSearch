@@ -19,7 +19,7 @@ import json
 
 from code.type_def import MaxSatModel, Context
 from code.generator import generate_contexts_and_data
-from code.experiments.synthetic import learn_model, learn_model_MILP, regret
+from code.experiments.synthetic import learn_model_sls, learn_model_MILP, regret
 from code.pysat_solver import solve_weighted_max_sat, get_value, label_instance
 from code.verify import get_recall_precision_sampling
 from tqdm import tqdm
@@ -94,7 +94,7 @@ def learn(args):
                                 continue
                         else:
                             try:
-                                learn_model(m, method, t, param, args.weighted, p)
+                                learn_model_sls(m, method, t, param, args.weighted, p)
                                 bar.update(1)
                             except FileNotFoundError:
                                 print("FileNotFound: " + param)

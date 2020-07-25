@@ -52,7 +52,7 @@ def example1():
         [True, True, False, False, True, True, True, False, True, False, True, False]
     )
     contexts = [set(), set(), set(), set(), {1}, {1}, {-1}, {-1}, {2}, {2}, {-2}, {-2}]
-    learn_weighted_max_sat(2, data, labels, contexts, 12, 0.1, 5, 1)
+    # learn_weighted_max_sat(2,2, data, labels, contexts, 12, 0.1, 5, 1)
 
 
 def example2():

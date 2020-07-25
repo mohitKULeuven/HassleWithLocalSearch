@@ -76,3 +76,10 @@ def test_maxsat():
     mxst.from_max_sat_model(2, model)
     assert mxst.optimal_value(context[0]) == 1
     assert mxst.optimal_value(context[1]) == 0
+
+
+# def test_learned_benchmark():
+#     pickle_var = pickle.load(open("pickles/target.pickle", "rb"))
+#     lm = pickle_var["true_model"]
+#     print(lm)
+#     assert True == False

@@ -47,50 +47,19 @@ class MaxSAT:
         self.k = k
         self.n = n
 
-    def get_neighbours(self, data, labels, contexts, rng, w, infeasible=None):
-        x = list(enumerate(data))
-        rng.shuffle(x)
-        indices, data = zip(*x)
-        if not infeasible:
-            infeasible = [None] * len(indices)
-
-        neighbours = []
-        index = 0
-        for i, example in enumerate(data):
-            if not self.is_correct(
-                example,
-                labels[indices[i]],
-                contexts[indices[i]],
-                infeasible[indices[i]],
-            ):
-                index = i
-                break
-        picked_example = data[index]
+    def get_neighbours(self, example, context, label, rng, infeasible=None, w=1):
         # val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
-        if not labels[indices[index]]:
-            if infeasible[indices[index]] is None:
-                neighbours = neighbours_pos(
-                    self, picked_example, contexts[indices[index]], rng, w
-                )
-            elif infeasible[indices[index]]:
-                neighbours = neighbours_pos_inf(
-                    self, picked_example, contexts[indices[index]], rng, w
-                )
+        if not label:
+            if infeasible is None:
+                neighbours = neighbours_pos(self, example, context, rng, w)
+            elif infeasible:
+                neighbours = neighbours_pos_inf(self, example, context, rng, w)
             else:
-                neighbours = neighbours_pos_sub(
-                    self, picked_example, contexts[indices[index]], rng, w
-                )
-        elif (
-            get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
-            is None
-        ):
-            neighbours = neighbours_inf(
-                self, picked_example, contexts[indices[index]], rng
-            )
+                neighbours = neighbours_pos_sub(self, example, context, rng, w)
+        elif get_value(self.maxSatModel(), example, context) is None:
+            neighbours = neighbours_inf(self, example, context, rng)
         else:
-            neighbours = neighbours_sub(
-                self, picked_example, contexts[indices[index]], rng, w
-            )
+            neighbours = neighbours_sub(self, example, context, rng, w)
 
         return neighbours
 
@@ -144,6 +113,7 @@ class MaxSAT:
 
         return neighbours
 
+    # add randomization on w
     def random_neighbour(self, rng):
         neighbour = self.deep_copy()
         random_clause = rng.randint(0, neighbour.k)
@@ -178,6 +148,8 @@ class MaxSAT:
 
     def is_correct(self, example, label, context=None, inf=None, optimum=-1):
         val = get_value(self.maxSatModel(), example, context)
+        # self.print_model()
+        # print(example, context)
         if val is None:
             if inf is None:
                 return not label

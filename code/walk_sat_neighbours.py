@@ -198,7 +198,7 @@ def neighbours_sub(model, instance, context, rng, w):
 
         if w == 1:
             tmp_w = model.w[index]
-            if tmp_w < 0.99999 and model.c[index] == 0:
+            if tmp_w < 0.999 and model.c[index] == 0:
                 neighbour = model.deep_copy()
                 neighbour.w[index] = (tmp_w + 1) / 2
                 neighbours.append(neighbour)
@@ -210,7 +210,7 @@ def neighbours_sub(model, instance, context, rng, w):
 
         if w == 1:
             tmp_w = model.w[index]
-            if tmp_w > 0.00001 and model.c[index] == 0:
+            if tmp_w > 0.001 and model.c[index] == 0:
                 neighbour = model.deep_copy()
                 neighbour.w[index] = tmp_w / 2
                 neighbours.append(neighbour)
@@ -243,7 +243,7 @@ def neighbours_pos(model, instance, context, rng, w):
 
         if w == 1:
             tmp_w = model.w[index]
-            if tmp_w < 0.99999 and model.c[index] == 0:
+            if tmp_w < 0.999 and model.c[index] == 0:
                 neighbour = model.deep_copy()
                 neighbour.w[index] = (tmp_w + 1) / 2
                 neighbours.append(neighbour)
@@ -254,7 +254,7 @@ def neighbours_pos(model, instance, context, rng, w):
 
         if w == 1:
             tmp_w = model.w[index]
-            if tmp_w > 0.00001 and model.c[index] == 0:
+            if tmp_w > 0.001 and model.c[index] == 0:
                 neighbour = model.deep_copy()
                 neighbour.w[index] = tmp_w / 2
                 neighbours.append(neighbour)
@@ -287,7 +287,7 @@ def neighbours_pos_sub(model, instance, context, rng, w):
 
         if w == 1:
             tmp_w = model.w[index]
-            if tmp_w < 0.99999 and model.c[index] == 0:
+            if tmp_w < 0.999 and model.c[index] == 0:
                 neighbour = model.deep_copy()
                 neighbour.w[index] = (tmp_w + 1) / 2
                 neighbours.append(neighbour)
@@ -298,7 +298,7 @@ def neighbours_pos_sub(model, instance, context, rng, w):
 
         if w == 1:
             tmp_w = model.w[index]
-            if tmp_w > 0.00001 and model.c[index] == 0:
+            if tmp_w > 0.001 and model.c[index] == 0:
                 neighbour = model.deep_copy()
                 neighbour.w[index] = tmp_w / 2
                 neighbours.append(neighbour)

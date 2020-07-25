@@ -41,14 +41,14 @@ def learn(args):
                                 continue
                         else:
                             try:
-                                learn_model(m, method, t, param, args.weighted, p)
+                                learn_model(m, method, t, param, p)
                                 bar.update(1)
                             except FileNotFoundError:
                                 print("FileNotFound: " + param)
                                 continue
 
 
-def learn_model(num_constraints, method, cutoff, param, w, p):
+def learn_model(num_constraints, method, cutoff, param, p):
     pickle_var = pickle.load(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
@@ -73,35 +73,17 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
             if rng.random_sample() < p:
                 labels[i] = not label
 
-    models, scores, time_taken, iterations, num_nghbr = learn_weighted_max_sat(
+    learn_weighted_max_sat(
         num_constraints,
+        3,
         data,
         labels,
         contexts,
         method,
-        int(len(labels) * 1),
-        w,
+        param,
         inf,
         cutoff_time=cutoff,
     )
-
-    for i, score in enumerate(scores):
-        scores[i] = scores[i] * 100 / data.shape[0]
-    pickle_var = {}
-    if "cnf" in param:
-        pickle_var["learned_model"] = [models[-1]]
-        pickle_var["time_taken"] = [time_taken[-1]]
-        pickle_var["score"] = [scores[-1]]
-    else:
-        pickle_var["learned_model"] = models
-        pickle_var["time_taken"] = time_taken
-        pickle_var["score"] = scores
-    pickle_var["iterations"] = iterations
-    pickle_var["num_neighbour"] = num_nghbr
-    if not os.path.exists("pickles/learned_model"):
-        os.makedirs("pickles/learned_model")
-    pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
-    return models[-1], time_taken[-1]
 
 
 if __name__ == "__main__":

@@ -12,12 +12,61 @@ from typing import List
 from .type_def import Clause
 from .maxsat import MaxSAT
 import copy
+import os
+import pickle
 from tqdm import tqdm
 
 
-def eval_neighbours(
-    correct_examples, neighbours, data, labels, contexts, num_neighbours, rng, inf=None
-):
+# def eval_neighbours(
+#     correct_examples, neighbours, data, labels, contexts, num_neighbours, rng, inf=None
+# ):
+#     if not inf:
+#         inf = [None] * len(labels)
+#
+#     neighbours = copy.copy(neighbours)
+#     next_correct_examples = np.zeros([len(neighbours), data.shape[0]])
+#
+#     scores = [0 for i in range(len(neighbours))]
+#
+#     for m, nbr in enumerate(neighbours):
+#         optimums = {}
+#         for i, example in enumerate(data):
+#             key = "_".join(map(str, contexts[i]))
+#             if key not in optimums:
+#                 optimums[key] = nbr.optimal_value(contexts[i])
+#             if correct_examples[i] == 1 and nbr.is_correct(
+#                 example, labels[i], contexts[i], inf=inf[i], optimum=optimums[key]
+#             ):
+#                 next_correct_examples[m, i] = 1
+#                 scores[m] += 1
+#
+#     lst_scores = []
+#     lst_models = []
+#     lst_correct_examples = []
+#     for _ in range(num_neighbours):
+#         lst_scores.append(max(scores))
+#         best_index = rng.choice(
+#             [i for i, v in enumerate(scores) if v == lst_scores[-1]]
+#         )
+#         lst_models.append(neighbours[best_index])
+#         del scores[best_index]
+#         del neighbours[best_index]
+#         optimums = {}
+#         for i, example in enumerate(data):
+#             if correct_examples[i] == 0:
+#                 key = "_".join(map(str, contexts[i]))
+#                 if key not in optimums:
+#                     optimums[key] = lst_models[-1].optimal_value(contexts[i])
+#                 if lst_models[-1].is_correct(
+#                     example, labels[i], contexts[i], inf=inf[i], optimum=optimums[key]
+#                 ):
+#                     next_correct_examples[best_index, i] = 1
+#                     lst_scores[-1] += 1
+#         lst_correct_examples.append(next_correct_examples[best_index, :])
+#     return lst_models, lst_scores, lst_correct_examples
+
+
+def eval_neighbours(neighbours, data, labels, contexts, num_neighbours, rng, inf=None):
     if not inf:
         inf = [None] * len(labels)
 
@@ -32,7 +81,7 @@ def eval_neighbours(
             key = "_".join(map(str, contexts[i]))
             if key not in optimums:
                 optimums[key] = nbr.optimal_value(contexts[i])
-            if correct_examples[i] == 1 and nbr.is_correct(
+            if nbr.is_correct(
                 example, labels[i], contexts[i], inf=inf[i], optimum=optimums[key]
             ):
                 next_correct_examples[m, i] = 1
@@ -40,7 +89,6 @@ def eval_neighbours(
 
     lst_scores = []
     lst_models = []
-    lst_correct_examples = []
     for _ in range(num_neighbours):
         lst_scores.append(max(scores))
         best_index = rng.choice(
@@ -49,84 +97,49 @@ def eval_neighbours(
         lst_models.append(neighbours[best_index])
         del scores[best_index]
         del neighbours[best_index]
-        optimums = {}
-        for i, example in enumerate(data):
-            if correct_examples[i] == 0:
-                key = "_".join(map(str, contexts[i]))
-                if key not in optimums:
-                    optimums[key] = lst_models[-1].optimal_value(contexts[i])
-                if lst_models[-1].is_correct(
-                    example, labels[i], contexts[i], inf=inf[i], optimum=optimums[key]
-                ):
-                    next_correct_examples[best_index, i] = 1
-                    lst_scores[-1] += 1
-        lst_correct_examples.append(next_correct_examples[best_index, :])
-    return lst_models, lst_scores, lst_correct_examples
+    return lst_models, lst_scores
 
 
-def walk_sat(correct_examples, neighbours, data, labels, contexts, p, rng, inf=None):
-    prev_score = len(correct_examples)
-    lst_models, lst_scores, lst_correct_examples = eval_neighbours(
-        correct_examples, neighbours, data, labels, contexts, 1, rng, inf
+def walk_sat(neighbours, data, labels, contexts, rng, inf=None):
+    # prev_score = len(correct_examples)
+    # if rng.random_sample() < p:
+    #     next_model = neighbours[rng.randint(0, len(neighbours))]
+    #     score, correct_examples = next_model.score(data, labels, contexts, inf)
+    #     return next_model, score
+    next_models, scores = eval_neighbours(
+        neighbours, data, labels, contexts, 1, rng, inf
     )
-    next_model, score, correct_examples = (
-        lst_models[0],
-        lst_scores[0],
-        lst_correct_examples[0],
-    )
-    if score == prev_score:
-        return next_model, score, correct_examples
-    elif rng.random_sample() < p:
-        next_model = neighbours[rng.randint(0, len(neighbours))]
-        score, correct_examples = next_model.score(data, labels, contexts, inf)
-        return next_model, score, correct_examples
-    else:
-        return next_model, score, correct_examples
+    return next_models[0], scores[0]
 
 
-def novelty(
-    prev_model, correct_examples, neighbours, data, labels, contexts, p, rng, inf=None
-):
-    lst_models, lst_scores, lst_correct_examples = eval_neighbours(
-        correct_examples, neighbours, data, labels, contexts, 2, rng, inf
+def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None):
+    # if rng.random_sample() < p:
+    #     next_model = neighbours[rng.randint(0, len(neighbours))]
+    #     score, correct_examples = next_model.score(data, labels, contexts, inf)
+    #     return next_model, score
+    lst_models, lst_scores = eval_neighbours(
+        neighbours, data, labels, contexts, 2, rng, inf
     )
     if not lst_models[0].is_same(prev_model):
-        return lst_models[0], lst_scores[0], lst_correct_examples[0]
-    elif rng.random_sample() > p:
-        return lst_models[0], lst_scores[0], lst_correct_examples[0]
+        return lst_models[0], lst_scores[0]
     else:
-        return lst_models[1], lst_scores[1], lst_correct_examples[1]
+        return lst_models[1], lst_scores[1]
 
 
-def novelty_plus(
-    prev_model,
-    correct_examples,
-    neighbours,
-    data,
-    labels,
-    contexts,
-    p,
-    wp,
-    rng,
-    inf=None,
-):
+def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=None):
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
         score, correct_examples = next_model.score(data, labels, contexts, inf)
-        return next_model, score, correct_examples
-    return novelty(
-        prev_model, correct_examples, neighbours, data, labels, contexts, p, rng, inf
-    )
+        return next_model, score
+    return novelty(prev_model, neighbours, data, labels, contexts, rng, inf)
 
 
 def adaptive_novelty_plus(
     prev_model,
-    correct_examples,
     neighbours,
     data,
     labels,
     contexts,
-    p,
     wp,
     theta,
     phi,
@@ -143,85 +156,11 @@ def adaptive_novelty_plus(
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
         score, correct_examples = next_model.score(data, labels, contexts, inf)
-        return next_model, score, correct_examples, wp
-    next_model, score, correct_examples = novelty(
-        prev_model, correct_examples, neighbours, data, labels, contexts, p, rng, inf
+        return next_model, score, wp
+    next_model, score = novelty(
+        prev_model, neighbours, data, labels, contexts, rng, inf
     )
-    return next_model, score, correct_examples, wp
-
-
-def best_neighbour(
-    prev_model,
-    correct_examples,
-    neighbours,
-    data,
-    labels,
-    contexts,
-    method,
-    p,
-    wp,
-    theta,
-    phi,
-    best_scores,
-    rng,
-    inf=None,
-):
-    """
-    Returns a model which breaks least of the 
-    already satisfied examples with it's score
-    """
-    if rng.random_sample() < wp:
-        next_model = neighbours[rng.randint(0, len(neighbours))]
-        score, correct_examples = next_model.score(data, labels, contexts, inf)
-    else:
-        if method == "walk_sat":
-            next_model, score, correct_examples = walk_sat(
-                correct_examples, neighbours, data, labels, contexts, p, rng, inf
-            )
-
-        elif method == "novelty":
-            next_model, score, correct_examples = novelty(
-                prev_model,
-                correct_examples,
-                neighbours,
-                data,
-                labels,
-                contexts,
-                p,
-                rng,
-                inf,
-            )
-
-        elif method == "novelty_plus":
-            next_model, score, correct_examples = novelty_plus(
-                prev_model,
-                correct_examples,
-                neighbours,
-                data,
-                labels,
-                contexts,
-                p,
-                wp,
-                rng,
-                inf,
-            )
-        elif method == "adaptive_novelty_plus":
-            next_model, score, correct_examples, wp = adaptive_novelty_plus(
-                prev_model,
-                correct_examples,
-                neighbours,
-                data,
-                labels,
-                contexts,
-                p,
-                wp,
-                theta,
-                phi,
-                best_scores,
-                rng,
-                inf,
-            )
-    return next_model, score, correct_examples, wp
+    return next_model, score, wp
 
 
 def ternary(n, length):
@@ -246,7 +185,7 @@ def ternary(n, length):
 def random_model(num_var, num_constraints, clause_len, seed) -> MaxSAT:
     rng = np.random.RandomState(seed)
     c = [rng.randint(0, 2) for i in range(num_constraints)]
-    w = [1 for i in range(num_constraints)]
+    w = [float("%.3f" % (rng.uniform(0.001, 0.999))) for i in range(num_constraints)]
     l = []
     i = 1
     while i <= num_constraints:
@@ -264,15 +203,30 @@ def random_model(num_var, num_constraints, clause_len, seed) -> MaxSAT:
     return MaxSAT(c, w, l)
 
 
+def random_incorrect_example_index(model, data, contexts, labels, infeasible, rng):
+    x = list(enumerate(np.copy(data)))
+    rng.shuffle(x)
+    indices, data = zip(*x)
+    if not infeasible:
+        infeasible = [None] * len(indices)
+    index = 0
+    for i, example in enumerate(data):
+        if not model.is_correct(
+            example, labels[indices[i]], contexts[indices[i]], infeasible[indices[i]]
+        ):
+            index = i
+            break
+    return indices[index]
+
+
 def learn_weighted_max_sat(
-    m: int,
+    num_constraints: int,
     clause_len: int,
     data: np.ndarray,
     labels: np.ndarray,
     contexts: List[Clause],
     method,
-    cutoff_score: int,
-    weighted,
+    param,
     inf=None,
     p=0.1,
     wp=0.1,
@@ -285,7 +239,7 @@ def learn_weighted_max_sat(
     Learn a weighted MaxSAT model from examples. Contexts and clauses are set-encoded, i.e., they are represented by
     sets containing positive or negative integers in the range -n-1 to n+1. If a set contains an positive integer i, the i-1th
      Boolean feature is set to True, if it contains a negative integer -i, the i-1th Boolean feature is set to False.
-    :param m:
+    :param num_constraints:
         The number of clauses in the MaxSAT model to learn
     :param data:
         A Boolean s x n (number examples x number Boolean variables) numpy array in which every row is an example and
@@ -298,11 +252,13 @@ def learn_weighted_max_sat(
         A list of weights and clauses. Every entry of the list is a tuple containing as first element None for hard
         constraints (clauses) or a floating point number for soft constraints, and as second element a set-encoded clause.
     """
+    if not os.path.exists("pickles/learned_model"):
+        os.makedirs("pickles/learned_model")
     start = time.time()
     # starting with a random model
+    model = random_model(data.shape[1], num_constraints, clause_len, seed)
 
     rng = np.random.RandomState(seed)
-    model = random_model(data.shape[1], m, clause_len, seed)
     prev_model = model
     bar = tqdm("Score", total=100)
     score, correct_examples = model.score(data, labels, contexts, inf)
@@ -312,53 +268,85 @@ def learn_weighted_max_sat(
     best_scores = [score]
     time_taken = [time.time() - start]
     iterations = [0]
-    i = 0
-    num_neighbours = 0
+    itr = 0
+    num_neighbours = [0]
+    nbr = 0
+    num_example = data.shape[0]
     # last_update = time.time()
-
     while (
-        score < cutoff_score
+        score < len(labels)
         and time.time() - start < cutoff_time
         # and time.time() - last_update < 3600
     ):
-        neighbours = model.get_neighbours(data, labels, contexts, rng, weighted, inf)
-        # neighbours = model.valid_neighbours()
-        if len(neighbours) == 0:
-            continue
-        elif method != "walk_sat" and len(neighbours) < 2:
-            continue
-        num_neighbours += len(neighbours)
-        next_model, score, correct_examples, wp_new = best_neighbour(
-            prev_model,
-            correct_examples,
-            neighbours,
-            data,
-            labels,
-            contexts,
-            method,
-            p,
-            wp,
-            theta,
-            phi,
-            best_scores,
-            rng,
-            inf,
-        )
-        if method == "adaptive_novelty_plus":
-            wp = wp_new
+        if rng.random_sample() < p:
+            next_model = random_model(data.shape[1], num_constraints, clause_len, seed)
+            score, correct_examples = next_model.score(data, labels, contexts, inf)
+        else:
+            index = random_incorrect_example_index(
+                model, data, contexts, labels, inf, rng
+            )
+            neighbours = model.get_neighbours(
+                data[index], contexts[index], labels[index], rng, inf[index]
+            )
+            # neighbours = model.valid_neighbours()
+            if len(neighbours) == 0 or (method != "walk_sat" and len(neighbours) < 2):
+                continue
+            nbr += len(neighbours)
+            if method == "walk_sat":
+                next_model, score = walk_sat(
+                    neighbours, data, labels, contexts, rng, inf
+                )
+            elif method == "novelty":
+                next_model, score = novelty(
+                    prev_model, neighbours, data, labels, contexts, rng, inf
+                )
+            elif method == "novelty_plus":
+                next_model, score = novelty_plus(
+                    prev_model, neighbours, data, labels, contexts, wp, rng, inf
+                )
+            elif method == "adaptive_novelty_plus":
+                next_model, score, wp = adaptive_novelty_plus(
+                    prev_model,
+                    neighbours,
+                    data,
+                    labels,
+                    contexts,
+                    wp,
+                    theta,
+                    phi,
+                    best_scores,
+                    rng,
+                    inf,
+                )
         prev_model = model
         model = next_model
-        i += 1
+        itr += 1
         if score > best_scores[-1]:
             solutions.append(model.deep_copy().maxSatModel())
-            bar.update((score - best_scores[-1]) * 100 / data.shape[0])
-            iterations.append(i)
+            bar.update((score - best_scores[-1]) * 100 / num_example)
+            iterations.append(itr)
+            num_neighbours.append(nbr)
             best_scores.append(score)
             last_update = time.time()
             time_taken.append(last_update - start)
 
-    # print("Final Score: ", best_scores[-1] * 100 / data.shape[0])
-    # tqdm.write(f"Final Score: {best_scores[-1] * 100 / data.shape[0]}")
-
-    # return ([solutions[-1]], [best_scores[-1]], [time_taken[-1]], iterations)
-    return (solutions, best_scores, time_taken, iterations, num_neighbours)
+    for i, score in enumerate(best_scores):
+        best_scores[i] = score * 100 / num_example
+    pickle_var = {
+        "learned_model": solutions,
+        "time_taken": time_taken,
+        "score": best_scores,
+        "iterations": iterations,
+        "num_neighbour": num_neighbours,
+    }
+    if "cnf" in param:
+        pickle_var = {
+            "learned_model": [solutions[-1]],
+            "time_taken": [time_taken[-1]],
+            "score": [best_scores[-1]],
+            "iterations": [iterations[-1]],
+            "num_neighbour": num_neighbours,
+        }
+    pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
+    return solutions[-1]
+    # return (solutions, best_scores, time_taken, iterations, num_neighbours)

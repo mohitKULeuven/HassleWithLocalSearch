@@ -29,7 +29,6 @@ def generate(args):
         * len(args.context_seeds)
     )
     bar = tqdm(total=iterations)
-    # bar = progressbar.ProgressBar(max_value=iterations, redirect_stdout=True)
     for n, h, s, seed in it.product(
         args.num_vars, args.num_hard, args.num_soft, args.model_seeds
     ):
@@ -76,7 +75,7 @@ def learn(args):
         else:
             try:
                 param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
-                learn_model(h + s, m, t, param, args.weighted, p)
+                learn_model_sls(h + s, m, t, param, p)
             except FileNotFoundError:
                 continue
         bar.update(1)
@@ -125,7 +124,7 @@ def evaluate(args, bl):
             "cutoff",
             "noise_probability",
             "iterations",
-            # "neighbours",
+            "neighbours",
         ]
     )
     for n, h, s, seed in it.product(
@@ -164,14 +163,14 @@ def evaluate(args, bl):
                     learned_model = None
                     time_taken = t
                     iteration = 0
-                    # num_nbr = 0
+                    num_nbr = 0
                     score = -1
                     if index is not None:
                         learned_model = pickle_var["learned_model"][index]
                         time_taken = pickle_var["time_taken"][index]
                         if m != "MILP":
                             iteration = pickle_var["iterations"][index]
-                        # num_nbr = pickle_var["num_neighbour"][index]
+                            num_nbr = pickle_var["num_neighbour"][index]
                         if learned_model:
                             score = pickle_var["score"][index]
 
@@ -210,7 +209,7 @@ def evaluate(args, bl):
                             t,
                             p,
                             iteration,
-                            # num_nbr,
+                            num_nbr,
                         ]
                     )
                     bar.update(1)
@@ -218,118 +217,7 @@ def evaluate(args, bl):
     csvfile.close()
 
 
-def evaluate_nbr(args, bl):
-    iterations = (
-        len(args.num_vars)
-        * len(args.num_hard)
-        * len(args.num_soft)
-        * len(args.model_seeds)
-        * len(args.num_context)
-        * len(args.context_seeds)
-        * len(args.method)
-        * len(args.cutoff)
-        * len(args.noise)
-    )
-    bar = tqdm(total=iterations)
-    folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)_nbr")
-    os.makedirs(f"results/{folder_name}")
-    with open(f"results/{folder_name}/arguments.txt", "w") as f:
-        json.dump(args.__dict__, f, indent=2)
-    csvfile = open(f"results/{folder_name}/evaluation.csv", "w")
-    filewriter = csv.writer(csvfile, delimiter=",")
-    filewriter.writerow(
-        [
-            "num_vars",
-            "num_hard",
-            "num_soft",
-            "model_seed",
-            "num_context",
-            "context_seed",
-            "num_pos",
-            "num_neg",
-            "method",
-            "score",
-            "accuracy",
-            "regret",
-            "infeasiblity",
-            "time_taken",
-            "cutoff",
-            "noise_probability",
-            "iterations",
-            "neighbours",
-        ]
-    )
-    for n, h, s, seed in it.product(
-        args.num_vars, args.num_hard, args.num_soft, args.model_seeds
-    ):
-        param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
-        target_model = pickle.load(
-            open("pickles/target_model/" + param + ".pickle", "rb")
-        )["true_model"]
-        max_t = max(args.cutoff)
-        for c, context_seed in it.product(args.num_context, args.context_seeds):
-            tag_cnd = (
-                param
-                + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
-            )
-            pickle_cnd = pickle.load(
-                open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
-            )
-            for m, p in it.product(args.method, args.noise):
-                tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
-                if bl == 1:
-                    tag += "_naive"
-                pickle_var = pickle.load(
-                    open("pickles/learned_model/" + tag + ".pickle", "rb")
-                )
-                recall, precision, accuracy = (-1, -1, -1)
-                regret, infeasiblity, f1_score = (-1, -1, -1)
-                iteration = 0
-                score = -1
-                learned_model = pickle_var["learned_model"][-1]
-                time_taken = pickle_var["time_taken"][-1]
-                if m != "MILP":
-                    iteration = pickle_var["iterations"][-1]
-                num_nbr = pickle_var["num_neighbour"]
-                if learned_model:
-                    score = pickle_var["score"][-1]
-
-                contexts = pickle_cnd["contexts"]
-                global_context = set()
-                for context in contexts:
-                    global_context.update(context)
-                if learned_model:
-                    recall, precision, accuracy, regret, infeasiblity = evaluate_statistics(
-                        n, target_model, learned_model, global_context
-                    )
-                filewriter.writerow(
-                    [
-                        n,
-                        h,
-                        s,
-                        seed,
-                        c,
-                        context_seed,
-                        args.num_pos,
-                        args.num_neg,
-                        m,
-                        score,
-                        accuracy,
-                        regret,
-                        infeasiblity,
-                        time_taken,
-                        max_t,
-                        p,
-                        iteration,
-                        num_nbr,
-                    ]
-                )
-                bar.update(1)
-
-    csvfile.close()
-
-
-def learn_model(num_constraints, method, cutoff, param, w, p):
+def learn_model_sls(num_constraints, method, cutoff, param, p):
     pickle_var = pickle.load(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
@@ -355,37 +243,17 @@ def learn_model(num_constraints, method, cutoff, param, w, p):
             if rng.random_sample() < p:
                 labels[i] = not label
 
-    models, scores, time_taken, iterations, num_nghbr = learn_weighted_max_sat(
+    return learn_weighted_max_sat(
         num_constraints,
         3,
         data,
         labels,
         contexts,
         method,
-        int(len(labels) * 1),
-        w,
+        param,
         inf,
         cutoff_time=cutoff,
     )
-
-    for i, score in enumerate(scores):
-        scores[i] = scores[i] * 100 / data.shape[0]
-    pickle_var = {}
-    if "cnf" in param:
-        pickle_var["learned_model"] = [models[-1]]
-        pickle_var["time_taken"] = [time_taken[-1]]
-        pickle_var["score"] = [scores[-1]]
-    else:
-        pickle_var["learned_model"] = models
-        pickle_var["time_taken"] = time_taken
-        pickle_var["score"] = scores
-    pickle_var["iterations"] = iterations
-    pickle_var["num_neighbour"] = num_nghbr
-    if not os.path.exists("pickles/learned_model"):
-        os.makedirs("pickles/learned_model")
-    pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
-    # tqdm.write(param + ": " + str(pickle_var["score"][-1]) + "\n")
-    return models[-1], time_taken[-1]
 
 
 def learn_model_MILP(num_constraints, method, cutoff, param, p):
@@ -532,6 +400,6 @@ if __name__ == "__main__":
     elif args.function == "evaluate":
         evaluate(args, 0)
 
-    elif args.function == "nbr":
+    elif args.function == "evaluate_nbr":
         evaluate_nbr(args, 0)
         evaluate_nbr(args, 1)
