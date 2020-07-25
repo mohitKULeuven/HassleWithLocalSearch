@@ -94,7 +94,7 @@ def learn(args):
                                 continue
                         else:
                             try:
-                                learn_model_sls(m, method, t, param, args.weighted, p)
+                                learn_model_sls(m, method, t, param, p)
                                 bar.update(1)
                             except FileNotFoundError:
                                 print("FileNotFound: " + param)

@@ -228,7 +228,7 @@ def learn_weighted_max_sat(
     method,
     param,
     inf=None,
-    p=0.1,
+    p=0.01,
     wp=0.1,
     theta=0.17,
     phi=0.2,
@@ -272,13 +272,14 @@ def learn_weighted_max_sat(
     num_neighbours = [0]
     nbr = 0
     num_example = data.shape[0]
-    # last_update = time.time()
+    last_update = time.time()
     while (
         score < len(labels)
         and time.time() - start < cutoff_time
         # and time.time() - last_update < 3600
     ):
-        if rng.random_sample() < p:
+        if time.time() - last_update > cutoff_time / 4:
+            # if rng.random_sample() < p:
             next_model = random_model(data.shape[1], num_constraints, clause_len, seed)
             score, correct_examples = next_model.score(data, labels, contexts, inf)
         else:
