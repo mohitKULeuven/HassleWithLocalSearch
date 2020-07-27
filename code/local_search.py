@@ -357,8 +357,6 @@ def learn_weighted_max_sat(
             "iterations": [iterations[-1]],
             "num_neighbour": num_neighbours,
         }
-    pickle.dump(
-        pickle_var, open("pickles/learned_model/" + param + "_naive.pickle", "wb")
-    )
+    pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
     return solutions[-1]
     # return (solutions, best_scores, time_taken, iterations, num_neighbours)

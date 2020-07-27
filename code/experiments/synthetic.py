@@ -145,6 +145,8 @@ def evaluate(args, bl):
             )
             for m, p in it.product(args.method, args.noise):
                 tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
+                if args.naive == 1:
+                    tag += "_naive"
                 if bl == 1:
                     tag += "_bl"
                 pickle_var = pickle.load(
