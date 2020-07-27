@@ -412,7 +412,7 @@ if __name__ == "__main__":
     CLI.add_argument("--cutoff", nargs="*", type=int, default=[2, 10, 60])
     CLI.add_argument("--weighted", type=int, default=1)
     CLI.add_argument("--noise", nargs="*", type=float, default=[0.05, 0.1, 0.2])
-    CLI.add_argument("--clause_len", type=int, default=0)
+    CLI.add_argument("--clause_len", type=int, default=3)
     args = CLI.parse_args()
 
     if args.function == "generate":
