@@ -286,10 +286,14 @@ def learn_weighted_max_sat(
             index = random_incorrect_example_index(
                 model, data, contexts, labels, inf, rng
             )
-            # neighbours = model.get_neighbours(
-            #     data[index], contexts[index], labels[index], rng, inf[index]
-            # )
-            neighbours = model.valid_neighbours()
+
+            if "naive" in param:
+                neighbours = model.valid_neighbours()
+            else:
+                neighbours = model.get_neighbours(
+                    data[index], contexts[index], labels[index], rng, inf[index]
+                )
+
             if len(neighbours) == 0 or (method != "walk_sat" and len(neighbours) < 2):
                 continue
             nbr += len(neighbours)
