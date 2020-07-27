@@ -20,19 +20,19 @@ CLI.add_argument(
     nargs="*",
     type=str,
     default=[
-        # "model_learned",
-        "score",
+        "model_learned",
+        # "score",
+        # "infeasiblity",
+        # "regret",
         # "accuracy",
-        # "f1_score",
-        "infeasiblity",
-        "regret",
-        # "time_taken",
     ],
 )
-CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
+CLI.add_argument(
+    "--aggregate_over", nargs="*", type=str, default=["num_context", "method"]
+)
 CLI.add_argument("--folder", type=str, default="results/27-07-20 (09:33:01.374995)/")
 CLI.add_argument("--file", type=str, default="evaluation")
-CLI.add_argument("--type", type=str, default="line")
+CLI.add_argument("--type", type=str, default="learned")
 args = CLI.parse_args()
 
 result_file = args.folder + args.file + ".csv"
@@ -146,54 +146,53 @@ if args.type == "line":
     )
 
 elif args.type == "learned":
-    fig, ax = plt.subplots()
-    for i, stats in enumerate(args.aggregate):
-        for j, c in enumerate([50]):
-            tmp_data = data.loc[data["num_context"] == c]
-            tmp_data["model_learned"] = 1 - tmp_data["accuracy"].isna().astype(int)
-            tmp_data["method"][tmp_data["method"] != "MILP"] = "SLS"
+    fig, ax = plt.subplots(1, 2, figsize=(10, 3), sharey="row")
+    stats = args.aggregate[0]
+    for i, aggr in enumerate([["num_context", "method"], ["cutoff", "method"]]):
+        if aggr[0] == "num_context":
+            tmp_data = data.loc[data["cutoff"] == 3600]
+        if aggr[0] == "cutoff":
+            tmp_data = data.loc[data["num_context"] == 50]
+        # tmp_data = data
+        tmp_data["model_learned"] = 1 - tmp_data["accuracy"].isna().astype(int)
+        tmp_data["method"][tmp_data["method"] != "MILP"] = "SLS"
 
-            if tmp_data[stats][tmp_data["method"] == "MILP"].isnull().all():
-                tmp_data[stats][tmp_data["method"] == "MILP"] = -1
-            mean_table = pd.pivot_table(
-                tmp_data, [stats], index=args.aggregate_over, aggfunc=np.mean
-            )
-            std_table = pd.pivot_table(
-                tmp_data, [stats], index=args.aggregate_over, aggfunc=std_err
-            )
-            mean_table_df = pd.DataFrame(mean_table.to_records())
-            std_table_df = pd.DataFrame(std_table.to_records())
-            line_mean_df = mean_table_df.pivot(
-                index=args.aggregate_over[0],
-                columns=args.aggregate_over[1],
-                values=stats,
-            )
-            line_std_df = std_table_df.pivot(
-                index=args.aggregate_over[0],
-                columns=args.aggregate_over[1],
-                values=stats,
-            )
-            line_mean_df.plot(rot=0, ax=ax, yerr=line_std_df)
-            ax.get_legend().remove()
+        if tmp_data[stats][tmp_data["method"] == "MILP"].isnull().all():
+            tmp_data[stats][tmp_data["method"] == "MILP"] = -1
+        mean_table = pd.pivot_table(tmp_data, [stats], index=aggr, aggfunc=np.mean)
+        std_table = pd.pivot_table(tmp_data, [stats], index=aggr, aggfunc=std_err)
+        mean_table_df = pd.DataFrame(mean_table.to_records())
+        std_table_df = pd.DataFrame(std_table.to_records())
+        line_mean_df = mean_table_df.pivot(index=aggr[0], columns=aggr[1], values=stats)
+        line_std_df = std_table_df.pivot(index=aggr[0], columns=aggr[1], values=stats)
+        line_mean_df.plot(rot=0, ax=ax[i], yerr=line_std_df)
+        ax[i].get_legend().remove()
+        if aggr[0] == "cutoff":
             mins = [600, 1200, 1800, 2400, 3000, 3600]
-            ax.set_xticks(mins)
-            ax.set_xticklabels([int(x / 60) for x in mins])
-            ax.set_ylabel(stats.capitalize())
-            ax.set_xlabel("cutoff (in minutes)")
-            ax.grid(True)
-            # ax.set_title(r"|$\mathcal{\Psi}$|=" + str(c))
-            if stats == "model_learned":
-                ax.set_ylim(-0.1, 1.1)
-            handles, labels = ax.get_legend_handles_labels()
+            ax[i].set_xticks(mins)
+            ax[i].set_xticklabels([int(x / 60) for x in mins])
+            ax[i].set_xlabel("Cutoff (in minutes)")
+        if aggr[0] == "num_context":
+            ax[i].set_xticks([10, 25, 50])
+            ax[i].set_xticklabels([40, 100, 200])
+            ax[i].set_xlabel("Number of Examples")
+        # ax.set_xticklabels([int(x / 60) for x in mins])
+        ax[i].set_ylabel(stats.capitalize())
+        ax[i].grid(True)
+        # ax.set_title(r"|$\mathcal{\Psi}$|=" + str(c))
+        if stats == "model_learned":
+            ax[i].set_ylim(-0.1, 1.1)
+        handles, labels = ax[i].get_legend_handles_labels()
     fig.legend(
         handles=handles,
         labels=labels,
-        bbox_to_anchor=(0.4, 1.1, 0.2, 0),
+        bbox_to_anchor=(0.4, 1.1, 0.2, 0.2),
         loc="upper center",
         ncol=2,
     )
     plt.savefig(
         args.folder + "synthetic_" + args.file + "_models_learned.pdf",
+        # args.folder + "models_learned_vs_num_context.png",
         bbox_inches="tight",
         pad_inches=0.05,
     )

@@ -286,10 +286,10 @@ def learn_weighted_max_sat(
             index = random_incorrect_example_index(
                 model, data, contexts, labels, inf, rng
             )
-            neighbours = model.get_neighbours(
-                data[index], contexts[index], labels[index], rng, inf[index]
-            )
-            # neighbours = model.valid_neighbours()
+            # neighbours = model.get_neighbours(
+            #     data[index], contexts[index], labels[index], rng, inf[index]
+            # )
+            neighbours = model.valid_neighbours()
             if len(neighbours) == 0 or (method != "walk_sat" and len(neighbours) < 2):
                 continue
             nbr += len(neighbours)
@@ -348,6 +348,8 @@ def learn_weighted_max_sat(
             "iterations": [iterations[-1]],
             "num_neighbour": num_neighbours,
         }
-    pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
+    pickle.dump(
+        pickle_var, open("pickles/learned_model/" + param + "_naive.pickle", "wb")
+    )
     return solutions[-1]
     # return (solutions, best_scores, time_taken, iterations, num_neighbours)
