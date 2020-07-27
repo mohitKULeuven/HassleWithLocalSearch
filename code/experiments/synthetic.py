@@ -354,10 +354,10 @@ def get_learned_model(time_taken, max_cutoff, cutoff):
             if t <= cutoff:
                 ind = 1
             elif cutoff < t and ind == 1:
-                break
+                return index - 1
             elif cutoff < t and ind == 0:
                 return None
-    return index - 1
+    return index
 
 
 logger = logging.getLogger(__name__)
