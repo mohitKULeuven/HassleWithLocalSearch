@@ -47,7 +47,9 @@ class MaxSAT:
         self.k = k
         self.n = n
 
-    def get_neighbours(self, example, context, label, rng, infeasible=None, w=1):
+    def get_neighbours(
+        self, example, context, label, clause_len, rng, infeasible=None, w=1
+    ):
         # val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
         if not label:
             if infeasible is None:
@@ -57,9 +59,9 @@ class MaxSAT:
             else:
                 neighbours = neighbours_pos_sub(self, example, context, rng, w)
         elif get_value(self.maxSatModel(), example, context) is None:
-            neighbours = neighbours_inf(self, example, context, rng)
+            neighbours = neighbours_inf(self, example, context, clause_len, rng)
         else:
-            neighbours = neighbours_sub(self, example, context, rng, w)
+            neighbours = neighbours_sub(self, example, context, clause_len, rng, w)
 
         return neighbours
 

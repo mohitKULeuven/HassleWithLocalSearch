@@ -291,7 +291,12 @@ def learn_weighted_max_sat(
                 neighbours = model.valid_neighbours()
             else:
                 neighbours = model.get_neighbours(
-                    data[index], contexts[index], labels[index], rng, inf[index]
+                    data[index],
+                    contexts[index],
+                    labels[index],
+                    clause_len,
+                    rng,
+                    inf[index],
                 )
 
             if len(neighbours) == 0 or (method != "walk_sat" and len(neighbours) < 2):

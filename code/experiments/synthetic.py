@@ -75,7 +75,7 @@ def learn(args):
         else:
             try:
                 param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
-                learn_model_sls(h + s, m, t, param, p, args.naive)
+                learn_model_sls(h + s, m, t, param, p, args.naive, args.clause_len)
             except FileNotFoundError:
                 continue
         bar.update(1)
@@ -217,7 +217,7 @@ def evaluate(args, bl):
     csvfile.close()
 
 
-def learn_model_sls(num_constraints, method, cutoff, param, p, naive=0):
+def learn_model_sls(num_constraints, method, cutoff, param, p, naive=0, clause_len=0):
     pickle_var = pickle.load(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
@@ -245,9 +245,12 @@ def learn_model_sls(num_constraints, method, cutoff, param, p, naive=0):
             if rng.random_sample() < p:
                 labels[i] = not label
 
+    if clause_len == 0:
+        clause_len = data.shape[1]
+
     return learn_weighted_max_sat(
         num_constraints,
-        data.shape[1],
+        clause_len,
         data,
         labels,
         contexts,
@@ -391,6 +394,7 @@ if __name__ == "__main__":
     CLI.add_argument("--noise", nargs="*", type=float, default=[0.05, 0.1, 0.2])
     CLI.add_argument("--weighted", type=int, default=1)
     CLI.add_argument("--naive", type=int, default=0)
+    CLI.add_argument("--clause_len", type=int, default=0)
 
     args = CLI.parse_args()
 

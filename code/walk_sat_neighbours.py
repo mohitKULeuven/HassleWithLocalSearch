@@ -133,7 +133,7 @@ def remove_literal(model, clause_index, literals):
     return neighbours
 
 
-def add_literal(model, clause_index, literals):
+def add_literal(model, clause_index, literals, clause_len):
     neighbours = []
     for literal in literals:
         j = abs(literal) - 1
@@ -142,7 +142,7 @@ def add_literal(model, clause_index, literals):
             neighbour.l[clause_index][j] = int(np.sign(literal))
             if (
                 any(neighbour.l[clause_index])
-                and num_literals_in_clause(neighbour.l[clause_index]) <= 3
+                and num_literals_in_clause(neighbour.l[clause_index]) <= clause_len
             ):
                 neighbours.append(neighbour)
     return neighbours
@@ -162,7 +162,7 @@ def num_literals_in_clause(clause):
     return sum(map(abs, clause))
 
 
-def neighbours_inf(model, instance, context, rng):
+def neighbours_inf(model, instance, context, clause_len, rng):
     i = hc_not_sat_ex(model, instance, context, rng)
     neighbours = []
     neighbour = model.deep_copy()
@@ -174,13 +174,16 @@ def neighbours_inf(model, instance, context, rng):
         for val in values:
             neighbour = model.deep_copy()
             neighbour.l[i][j] = val
-            if any(neighbour.l[i]) and num_literals_in_clause(neighbour.l[i]) <= 3:
+            if (
+                any(neighbour.l[i])
+                and num_literals_in_clause(neighbour.l[i]) <= clause_len
+            ):
                 neighbours.append(neighbour)
 
     return neighbours
 
 
-def neighbours_sub(model, instance, context, rng, w):
+def neighbours_sub(model, instance, context, clause_len, rng, w):
     sol, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
     opt_literals = instance_to_literals(sol)
     exp_literals = instance_to_literals(instance)
@@ -206,7 +209,7 @@ def neighbours_sub(model, instance, context, rng, w):
     index = sc_sat_opt_not_ex(model, instance, context, rng)
     if index >= 0:
         neighbours.extend(remove_literal(model, index, opt_literals))
-        neighbours.extend(add_literal(model, index, exp_literals))
+        neighbours.extend(add_literal(model, index, exp_literals, clause_len))
 
         if w == 1:
             tmp_w = model.w[index]
@@ -217,7 +220,9 @@ def neighbours_sub(model, instance, context, rng, w):
 
     index = sc_not_sat_any(model, instance, context, rng)
     if index >= 0:
-        neighbours.extend(add_literal(model, index, exp_literals - opt_literals))
+        neighbours.extend(
+            add_literal(model, index, exp_literals - opt_literals, clause_len)
+        )
 
     index = sc_sat_both(model, instance, context, rng)
     if index >= 0:
