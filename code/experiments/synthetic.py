@@ -245,7 +245,7 @@ def learn_model_sls(num_constraints, method, cutoff, param, p):
 
     return learn_weighted_max_sat(
         num_constraints,
-        data.shape[1],
+        3,
         data,
         labels,
         contexts,

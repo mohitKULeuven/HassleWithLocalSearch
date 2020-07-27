@@ -30,7 +30,7 @@ CLI.add_argument(
     ],
 )
 CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
-CLI.add_argument("--folder", type=str, default="results/18-07-20 (15:19:22.501969)/")
+CLI.add_argument("--folder", type=str, default="results/27-07-20 (09:33:01.374995)/")
 CLI.add_argument("--file", type=str, default="evaluation")
 CLI.add_argument("--type", type=str, default="line")
 args = CLI.parse_args()
@@ -69,12 +69,12 @@ if args.type == "line":
             tmp_data[stats][
                 (tmp_data["method"] == "MILP") & (tmp_data["num_context"] == 50)
             ] = -1
-
-            tmp_data[stats][
-                (tmp_data["method"] == "MILP")
-                & (tmp_data["num_context"] == 25)
-                & (tmp_data["cutoff"] < 1200)
-            ] = None
+            #
+            # tmp_data[stats][
+            #     (tmp_data["method"] == "MILP")
+            #     & (tmp_data["num_context"] == 25)
+            #     & (tmp_data["cutoff"] < 1200)
+            # ] = None
             # tmp_data = tmp_data.drop(
             #     tmp_data[
             #         (tmp_data["method"] == "MILP") & (tmp_data["num_context"] == 50)
@@ -102,7 +102,7 @@ if args.type == "line":
                 columns=args.aggregate_over[1],
                 values=stats,
             )
-            mins = [60, 600, 1200, 1800, 2400, 3000, 3600]
+            mins = [600, 1200, 1800, 2400, 3000, 3600]
             line_mean_df.plot(rot=0, ax=ax[i, j], style=linestyles)
             ax[i, j].get_legend().remove()
             ax[i, j].set_xticks(mins)
@@ -114,16 +114,16 @@ if args.type == "line":
             if stats == "model_learned":
                 ax[i, j].set_ylim(0, 1.1)
             elif stats == "score":
-                ax[i, j].set_ylim(0.5, 1.01)
+                ax[i, j].set_ylim(0.85, 1.01)
             elif stats == "accuracy":
                 ax[i, j].set_ylim(0.55, 0.75)
                 ax[i, j].set_yticks([0.6, 0.7, 0.8, 0.9])
             elif stats == "f1_score":
                 ax[i, j].set_ylim(0.3, 1)
             elif stats == "regret":
-                ax[i, j].set_ylim(0.01, 0.05)
+                ax[i, j].set_ylim(0.01, 0.04)
             elif stats == "infeasiblity":
-                ax[i, j].set_ylim(0.05, 0.35)
+                ax[i, j].set_ylim(0.05, 0.31)
             handles, labels = ax[i, j].get_legend_handles_labels()
 
     for i, l in enumerate(labels):
@@ -139,16 +139,16 @@ if args.type == "line":
         bbox_to_anchor=(0.35, 1.05, 0.2, 0),
     )
     plt.savefig(
-        args.folder + "synthetic_" + args.file + ".png",
+        args.folder + "synthetic_" + args.file + ".pdf",
         bbox_extra_artists=(lgd,),
         bbox_inches="tight",
         pad_inches=0.2,
     )
 
 elif args.type == "learned":
-    fig, ax = plt.subplots(1, 3, figsize=(15, 3), sharex="col", sharey="row")
+    fig, ax = plt.subplots()
     for i, stats in enumerate(args.aggregate):
-        for j, c in enumerate([10, 25, 50]):
+        for j, c in enumerate([50]):
             tmp_data = data.loc[data["num_context"] == c]
             tmp_data["model_learned"] = 1 - tmp_data["accuracy"].isna().astype(int)
             tmp_data["method"][tmp_data["method"] != "MILP"] = "SLS"
@@ -173,24 +173,23 @@ elif args.type == "learned":
                 columns=args.aggregate_over[1],
                 values=stats,
             )
-            line_mean_df.plot(rot=0, ax=ax[j], yerr=line_std_df)
-            ax[j].get_legend().remove()
-            mins = [60, 600, 1200, 1800, 2400, 3000, 3600]
-            ax[j].set_xticks(mins)
-            ax[j].set_xticklabels([int(x / 60) for x in mins])
-            ax[j].set_ylabel(stats.capitalize())
-            ax[j].set_xlabel("cutoff (in minutes)")
-            ax[j].grid(True)
-            ax[j].set_title(r"|$\mathcal{\Psi}$|=" + str(c))
+            line_mean_df.plot(rot=0, ax=ax, yerr=line_std_df)
+            ax.get_legend().remove()
+            mins = [600, 1200, 1800, 2400, 3000, 3600]
+            ax.set_xticks(mins)
+            ax.set_xticklabels([int(x / 60) for x in mins])
+            ax.set_ylabel(stats.capitalize())
+            ax.set_xlabel("cutoff (in minutes)")
+            ax.grid(True)
+            # ax.set_title(r"|$\mathcal{\Psi}$|=" + str(c))
             if stats == "model_learned":
-                ax[j].set_ylim(-0.1, 1.1)
-            handles, labels = ax[i].get_legend_handles_labels()
+                ax.set_ylim(-0.1, 1.1)
+            handles, labels = ax.get_legend_handles_labels()
     fig.legend(
         handles=handles,
         labels=labels,
+        bbox_to_anchor=(0.4, 1.1, 0.2, 0),
         loc="upper center",
-        bbox_to_anchor=(0.33, 1.3, 0.24, 0.1),
-        mode="expand",
         ncol=2,
     )
     plt.savefig(
