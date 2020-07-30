@@ -101,7 +101,7 @@ if __name__ == "__main__":
     CLI.add_argument("--num_pos", type=int, default=2)
     CLI.add_argument("--num_neg", type=int, default=2)
     CLI.add_argument("--sample_size", type=int, default=1000)
-    CLI.add_argument("--method", nargs="*", type=str, default=["novelty"])
+    CLI.add_argument("--method", nargs="*", type=str, default=["walk_sat"])
     CLI.add_argument("--cutoff", nargs="*", type=int, default=[86400])
     CLI.add_argument("--noise", nargs="*", type=float, default=[0])
     CLI.add_argument("--weighted", type=int, default=1)

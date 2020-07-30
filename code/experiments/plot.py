@@ -22,15 +22,13 @@ CLI.add_argument(
     default=[
         "model_learned",
         # "score",
+        # "accuracy",
         # "infeasiblity",
         # "regret",
-        # "accuracy",
     ],
 )
-CLI.add_argument(
-    "--aggregate_over", nargs="*", type=str, default=["num_context", "method"]
-)
-CLI.add_argument("--folder", type=str, default="results/27-07-20 (09:33:01.374995)/")
+CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
+CLI.add_argument("--folder", type=str, default="results/models_learned/")
 CLI.add_argument("--file", type=str, default="evaluation")
 CLI.add_argument("--type", type=str, default="learned")
 args = CLI.parse_args()
@@ -64,11 +62,12 @@ if args.type == "line":
     )
 
     for i, stats in enumerate(args.aggregate):
-        for j, c in enumerate([10, 25, 50]):
+        for j, c in enumerate([25, 50, 100]):
             tmp_data = data.loc[data["num_context"] == c]
-            tmp_data[stats][
-                (tmp_data["method"] == "MILP") & (tmp_data["num_context"] == 50)
-            ] = -1
+            if i > 0:
+                tmp_data[stats][
+                    (tmp_data["method"] == "MILP") & (tmp_data["num_context"] == 50)
+                ] = -1
             #
             # tmp_data[stats][
             #     (tmp_data["method"] == "MILP")
@@ -116,14 +115,14 @@ if args.type == "line":
             elif stats == "score":
                 ax[i, j].set_ylim(0.85, 1.01)
             elif stats == "accuracy":
-                ax[i, j].set_ylim(0.55, 0.75)
+                ax[i, j].set_ylim(0.65, 0.9)
                 ax[i, j].set_yticks([0.6, 0.7, 0.8, 0.9])
             elif stats == "f1_score":
                 ax[i, j].set_ylim(0.3, 1)
             elif stats == "regret":
-                ax[i, j].set_ylim(0.01, 0.04)
+                ax[i, j].set_ylim(0.009, 0.03)
             elif stats == "infeasiblity":
-                ax[i, j].set_ylim(0.05, 0.31)
+                ax[i, j].set_ylim(0.03, 0.25)
             handles, labels = ax[i, j].get_legend_handles_labels()
 
     for i, l in enumerate(labels):
@@ -136,23 +135,23 @@ if args.type == "line":
         labels=labels,
         loc="upper center",
         ncol=3,
-        bbox_to_anchor=(0.35, 1.05, 0.2, 0),
+        bbox_to_anchor=(0.35, 1.0, 0.2, 0),
     )
     plt.savefig(
         args.folder + "synthetic_" + args.file + ".pdf",
         bbox_extra_artists=(lgd,),
         bbox_inches="tight",
-        pad_inches=0.2,
+        pad_inches=0.35,
     )
 
 elif args.type == "learned":
     fig, ax = plt.subplots(1, 2, figsize=(10, 3), sharey="row")
     stats = args.aggregate[0]
-    for i, aggr in enumerate([["num_context", "method"], ["cutoff", "method"]]):
-        if aggr[0] == "num_context":
-            tmp_data = data.loc[data["cutoff"] == 3600]
-        if aggr[0] == "cutoff":
+    for i, aggr in enumerate([["num_context", "method"], ["num_vars", "method"]]):
+        if aggr[0] == "num_vars":
             tmp_data = data.loc[data["num_context"] == 50]
+        if aggr[0] == "num_context":
+            tmp_data = data.loc[data["num_vars"] == 10]
         # tmp_data = data
         tmp_data["model_learned"] = 1 - tmp_data["accuracy"].isna().astype(int)
         tmp_data["method"][tmp_data["method"] != "MILP"] = "SLS"
@@ -167,15 +166,13 @@ elif args.type == "learned":
         line_std_df = std_table_df.pivot(index=aggr[0], columns=aggr[1], values=stats)
         line_mean_df.plot(rot=0, ax=ax[i], yerr=line_std_df)
         ax[i].get_legend().remove()
-        if aggr[0] == "cutoff":
-            mins = [600, 1200, 1800, 2400, 3000, 3600]
-            ax[i].set_xticks(mins)
-            ax[i].set_xticklabels([int(x / 60) for x in mins])
-            ax[i].set_xlabel("Cutoff (in minutes)")
+        if aggr[0] == "num_vars":
+            ax[i].set_xticks([8, 10, 12, 15])
+            ax[i].set_xlabel("Number of Variables")
         if aggr[0] == "num_context":
-            ax[i].set_xticks([10, 25, 50])
-            ax[i].set_xticklabels([40, 100, 200])
-            ax[i].set_xlabel("Number of Examples")
+            ax[i].set_xticks([25, 50, 100])
+            # ax[i].set_xticklabels([40, 100, 200])
+            ax[i].set_xlabel("Number of Contexts")
         # ax.set_xticklabels([int(x / 60) for x in mins])
         ax[i].set_ylabel(stats.capitalize())
         ax[i].grid(True)
@@ -183,18 +180,19 @@ elif args.type == "learned":
         if stats == "model_learned":
             ax[i].set_ylim(-0.1, 1.1)
         handles, labels = ax[i].get_legend_handles_labels()
-    fig.legend(
+    lgd = fig.legend(
         handles=handles,
         labels=labels,
-        bbox_to_anchor=(0.4, 1.1, 0.2, 0.2),
+        bbox_to_anchor=(0.4, 1.15, 0.2, 0.1),
         loc="upper center",
         ncol=2,
     )
     plt.savefig(
-        args.folder + "synthetic_" + args.file + "_models_learned.pdf",
+        args.folder + "synthetic_" + args.file + "_models_learned.png",
         # args.folder + "models_learned_vs_num_context.png",
+        bbox_extra_artists=(lgd,),
         bbox_inches="tight",
-        pad_inches=0.05,
+        pad_inches=0.02,
     )
 
 
