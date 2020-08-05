@@ -5,7 +5,12 @@ import os
 import itertools as it
 import copy
 
-from .pysat_solver import solve_weighted_max_sat, label_instance, is_infeasible
+from .pysat_solver import (
+    solve_weighted_max_sat,
+    label_instance,
+    is_infeasible,
+    is_suboptimal,
+)
 from .type_def import MaxSatModel, Context
 from pysat.examples.fm import FM
 from pysat.formula import WCNF
@@ -35,9 +40,9 @@ def generate_models(n, max_clause_length, num_hard, num_soft, model_seed):
 
 
 def generate_contexts_and_data(
-    n, model, num_context, num_pos, num_neg, param, context_seed
+    n, model, num_context, num_pos, num_neg, neg_type, param, context_seed
 ):
-    param += f"_num_context_{num_context}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
+    param += f"_num_context_{num_context}_num_pos_{num_pos}_num_neg_{num_neg}_num_neg_{neg_type}_context_seed_{context_seed}"
     if os.path.exists("pickles/contexts_and_data/" + param + ".pickle"):
         return param
     pickle_var = {}
@@ -46,14 +51,18 @@ def generate_contexts_and_data(
     pickle_var["data"] = []
     pickle_var["labels"] = []
     if num_context == 0:
-        data, labels = random_data(n, model, set(), num_pos, num_neg, context_seed)
+        data, labels = random_data(
+            n, model, set(), num_pos, num_neg, neg_type, context_seed
+        )
         pickle_var["contexts"].extend([set()] * len(data))
         pickle_var["data"].extend(data)
         pickle_var["labels"].extend(labels)
     else:
         for _ in range(num_context):
             context, data_seed = random_context(n, rng)
-            data, labels = random_data(n, model, context, num_pos, num_neg, data_seed)
+            data, labels = random_data(
+                n, model, context, num_pos, num_neg, neg_type, data_seed
+            )
             pickle_var["contexts"].extend([context] * len(data))
             pickle_var["data"].extend(data)
             pickle_var["labels"].extend(labels)
@@ -180,7 +189,9 @@ def random_context(n, rng):
     return context, data_seed
 
 
-def random_data(n, model: MaxSatModel, context: Context, num_pos, num_neg, seed):
+def random_data(
+    n, model: MaxSatModel, context: Context, num_pos, num_neg, neg_type, seed
+):
     rng = np.random.RandomState(seed)
     data = []
     tmp_data, cst = solve_weighted_max_sat(n, model, context, num_pos * 10)
@@ -192,6 +203,40 @@ def random_data(n, model: MaxSatModel, context: Context, num_pos, num_neg, seed)
         data = tmp_data
     num_pos = len(data)
     labels = [1] * num_pos
+    if neg_type == "inf":
+        d, l = random_infeasible(n, model, context, num_neg, seed)
+    elif neg_type == "sub":
+        d, l = random_suboptimal(n, model, context, num_neg, seed)
+    elif neg_type == "both":
+        d, l = random_infeasible(n, model, context, num_neg / 2, seed)
+        d1, l1 = random_suboptimal(n, model, context, num_neg / 2, seed)
+        d.extend(d1)
+        l.extend(l1)
+    data.extend(d)
+    labels.extend(l)
+
+    # max_tries = 1000 * num_neg
+    # rng = np.random.RandomState(seed)
+    # for l in range(max_tries):
+    #     instance = rng.rand(n) > 0.5
+    #     for i in rng.choice(list(context), 1):
+    #         instance[abs(i) - 1] = i > 0
+    #     if list(instance) in data:
+    #         continue
+    #     if not label_instance(model, instance, context):
+    #         data.append(list(instance))
+    #         if is_infeasible(model, instance, context):
+    #             labels.append(-1)
+    #         else:
+    #             labels.append(0)
+    #         if len(data) >= num_neg + num_pos:
+    #             break
+    return data, labels
+
+
+def random_infeasible(n, model: MaxSatModel, context: Context, num_neg, seed):
+    data = []
+    labels = []
     max_tries = 1000 * num_neg
     rng = np.random.RandomState(seed)
     for l in range(max_tries):
@@ -200,12 +245,28 @@ def random_data(n, model: MaxSatModel, context: Context, num_pos, num_neg, seed)
             instance[abs(i) - 1] = i > 0
         if list(instance) in data:
             continue
-        if not label_instance(model, instance, context):
+        if is_infeasible(model, instance, context):
             data.append(list(instance))
-            if is_infeasible(model, instance, context):
-                labels.append(-1)
-            else:
-                labels.append(0)
-            if len(data) >= num_neg + num_pos:
+            labels.append(-1)
+            if len(data) >= num_neg:
+                break
+    return data, labels
+
+
+def random_suboptimal(n, model: MaxSatModel, context: Context, num_neg, seed):
+    data = []
+    labels = []
+    max_tries = 1000 * num_neg
+    rng = np.random.RandomState(seed)
+    for l in range(max_tries):
+        instance = rng.rand(n) > 0.5
+        for i in rng.choice(list(context), 1):
+            instance[abs(i) - 1] = i > 0
+        if list(instance) in data:
+            continue
+        if is_suboptimal(model, instance, context):
+            data.append(list(instance))
+            labels.append(0)
+            if len(data) >= num_neg:
                 break
     return data, labels

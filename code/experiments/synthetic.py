@@ -36,7 +36,14 @@ def generate(args):
 
         for c, context_seed in it.product(args.num_context, args.context_seeds):
             tag = generate_contexts_and_data(
-                n, model, c, args.num_pos, args.num_neg, param, context_seed
+                n,
+                model,
+                c,
+                args.num_pos,
+                args.num_neg,
+                args.neg_type,
+                param,
+                context_seed,
             )
             tqdm.write(tag)
             bar.update(1)
@@ -378,6 +385,7 @@ if __name__ == "__main__":
     )
     CLI.add_argument("--num_pos", type=int, default=2)
     CLI.add_argument("--num_neg", type=int, default=2)
+    CLI.add_argument("--neg_type", type=str, default="both")
     CLI.add_argument(
         "--method",
         nargs="*",

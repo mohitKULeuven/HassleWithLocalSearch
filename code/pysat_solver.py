@@ -126,6 +126,15 @@ def is_infeasible(model: MaxSatModel, instance: Instance, context: Context) -> b
     return False
 
 
+def is_suboptimal(model: MaxSatModel, instance: Instance, context: Context) -> bool:
+    value = get_value(model, instance, context)
+    if value is None:
+        return False
+    best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
+    best_value = get_value(model, best_instance, context)
+    return not value == best_value
+
+
 def represent_int(s):
     try:
         int(s)

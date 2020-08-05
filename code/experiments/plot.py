@@ -20,17 +20,17 @@ CLI.add_argument(
     nargs="*",
     type=str,
     default=[
-        "model_learned",
-        # "score",
-        # "accuracy",
-        # "infeasiblity",
-        # "regret",
+        # "model_learned",
+        "score",
+        "accuracy",
+        "infeasiblity",
+        "regret",
     ],
 )
 CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
-CLI.add_argument("--folder", type=str, default="results/models_learned/")
+CLI.add_argument("--folder", type=str, default="results/synthetic/")
 CLI.add_argument("--file", type=str, default="evaluation")
-CLI.add_argument("--type", type=str, default="learned")
+CLI.add_argument("--type", type=str, default="line")
 args = CLI.parse_args()
 
 result_file = args.folder + args.file + ".csv"
@@ -64,10 +64,10 @@ if args.type == "line":
     for i, stats in enumerate(args.aggregate):
         for j, c in enumerate([25, 50, 100]):
             tmp_data = data.loc[data["num_context"] == c]
-            if i > 0:
-                tmp_data[stats][
-                    (tmp_data["method"] == "MILP") & (tmp_data["num_context"] == 50)
-                ] = -1
+            # if i > 0:
+            tmp_data[stats][
+                (tmp_data["method"] == "MILP") & (tmp_data["num_context"] == 50)
+            ] = -1
             #
             # tmp_data[stats][
             #     (tmp_data["method"] == "MILP")
