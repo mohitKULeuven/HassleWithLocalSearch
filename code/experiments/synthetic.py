@@ -73,15 +73,14 @@ def learn(args):
         args.cutoff,
         args.noise,
     ):
+        param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
         if m == "MILP":
             try:
-                param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
                 learn_model_MILP(h + s, m, t, param, p)
             except FileNotFoundError:
                 continue
         else:
             try:
-                param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
                 learn_model_sls(h + s, m, t, param, p, args.naive, args.clause_len)
             except FileNotFoundError:
                 continue

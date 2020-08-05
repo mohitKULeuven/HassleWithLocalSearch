@@ -91,7 +91,7 @@ def learn(args):
                 for s in args.per_soft:
                     for seed in args.model_seeds:
                         n, m = cnf_param(args.path + cnf_file, args.num_constraints)
-                        param = f"_{cnf_file}_num_constraints_{args.num_constraints}_per_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
+                        param = f"_{cnf_file}_num_constraints_{args.num_constraints}_per_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
                         if method == "MILP":
                             try:
                                 learn_model_MILP(m, method, t, param, p)
