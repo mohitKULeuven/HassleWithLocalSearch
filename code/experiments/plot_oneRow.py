@@ -21,10 +21,16 @@ CLI.add_argument(
     default=["score", "accuracy", "infeasiblity", "regret"],
 )
 CLI.add_argument(
-    "--aggregate_over", nargs="*", type=str, default=["num_soft", "num_hard"]
+    "--aggregate_over",
+    nargs="*",
+    type=str,
+    default=["num_vars", "num_soft", "num_hard"],
 )
 CLI.add_argument(
-    "--folder", nargs="*", type=str, default=["results/num_soft/", "results/num_hard/"]
+    "--folder",
+    nargs="*",
+    type=str,
+    default=["results/num_vars/", "results/num_soft/", "results/num_hard/"],
 )
 CLI.add_argument("--file", type=str, default="evaluation")
 args = CLI.parse_args()
@@ -68,8 +74,9 @@ for i, var in enumerate(args.aggregate_over):
         std_table = pd.pivot_table(tmp_data, [stats], index=[var], aggfunc=std_err)
         mean_table.plot(rot=0, ax=ax[r, i], yerr=std_table, color=colors[j])
         ax[r, i].get_legend().remove()
-        ax[r, 0].set_xticks([2, 5, 10, 15])
+        ax[r, 0].set_xticks([8, 10, 12, 15])
         ax[r, 1].set_xticks([2, 5, 10, 15])
+        ax[r, 2].set_xticks([2, 5, 10, 15])
         ax[r, i].grid(True)
         if j % 2 == 1:
             handles, labels = ax[r, i].get_legend_handles_labels()
@@ -92,6 +99,17 @@ plt.savefig(
     + "_over_"
     + "_".join(args.aggregate_over)
     + ".png",
+    bbox_inches="tight",
+    pad_inches=0.1,
+)
+
+plt.savefig(
+    args.folder[0]
+    + "synthetic_"
+    + args.file
+    + "_over_"
+    + "_".join(args.aggregate_over)
+    + ".pdf",
     bbox_inches="tight",
     pad_inches=0.1,
 )

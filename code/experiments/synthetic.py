@@ -73,7 +73,9 @@ def learn(args):
         args.cutoff,
         args.noise,
     ):
-        param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
+        param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
+        if args.neg_type:
+            param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
         if m == "MILP":
             try:
                 learn_model_MILP(h + s, m, t, param, p)
@@ -146,6 +148,11 @@ def evaluate(args, bl):
                 param
                 + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
             )
+            if args.neg_type:
+                tag_cnd = (
+                    param
+                    + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
+                )
             pickle_cnd = pickle.load(
                 open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
             )
@@ -384,7 +391,7 @@ if __name__ == "__main__":
     )
     CLI.add_argument("--num_pos", type=int, default=2)
     CLI.add_argument("--num_neg", type=int, default=2)
-    CLI.add_argument("--neg_type", type=str, default="both")
+    CLI.add_argument("--neg_type", type=str, default=None)
     CLI.add_argument(
         "--method",
         nargs="*",
