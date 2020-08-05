@@ -208,8 +208,8 @@ def random_data(
     elif neg_type == "sub":
         d, l = random_suboptimal(n, model, context, num_neg, seed)
     elif neg_type == "both":
-        d, l = random_infeasible(n, model, context, num_neg / 2, seed)
-        d1, l1 = random_suboptimal(n, model, context, num_neg / 2, seed)
+        d, l = random_infeasible(n, model, context, int(num_neg / 2), seed)
+        d1, l1 = random_suboptimal(n, model, context, int(num_neg / 2), seed)
         d.extend(d1)
         l.extend(l1)
     data.extend(d)
