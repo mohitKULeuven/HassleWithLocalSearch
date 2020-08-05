@@ -42,7 +42,7 @@ def generate_models(n, max_clause_length, num_hard, num_soft, model_seed):
 def generate_contexts_and_data(
     n, model, num_context, num_pos, num_neg, neg_type, param, context_seed
 ):
-    param += f"_num_context_{num_context}_num_pos_{num_pos}_num_neg_{num_neg}_num_neg_{neg_type}_context_seed_{context_seed}"
+    param += f"_num_context_{num_context}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
     if os.path.exists("pickles/contexts_and_data/" + param + ".pickle"):
         return param
     pickle_var = {}
