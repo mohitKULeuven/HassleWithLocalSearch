@@ -19,7 +19,12 @@ import json
 
 from code.type_def import MaxSatModel, Context
 from code.generator import generate_contexts_and_data
-from code.experiments.synthetic import learn_model_sls, learn_model_MILP, regret
+from code.experiments.synthetic import (
+    learn_model_sls,
+    learn_model_MILP,
+    regret,
+    evaluate_statistics,
+)
 from code.pysat_solver import solve_weighted_max_sat, get_value, label_instance
 from code.verify import get_recall_precision_sampling
 from tqdm import tqdm
@@ -219,13 +224,16 @@ def evaluate(args, bl):
 
                         recall, precision, accuracy, regret = -1, -1, -1, -1
                         if learned_model:
-                            recall, precision, accuracy, regret, infeasiblity, f1_random, reg_random, inf_random = evaluate_statistics_sampling(
+                            recall, precision, accuracy, regret, infeasiblity, f1_random, reg_random, inf_random = evaluate_statistics(
                                 n,
                                 target_model,
                                 learned_model,
                                 global_context,
-                                args.sample_size,
-                                seed,
+                                # args.sample_size,
+                                # seed,
+                            )
+                            f1_random, reg_random, inf_random = random_classifier(
+                                n, target_model, global_context, args.sample_size, seed
                             )
                         f1_score = 0
                         if recall + precision != 0:
