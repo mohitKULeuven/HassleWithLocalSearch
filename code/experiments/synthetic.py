@@ -354,9 +354,10 @@ def regret(n, target_model, learned_model, context):
         return -1
     for learned_sol in learned_sols:
         learned_opt_val = get_value(target_model, learned_sol, context)
-        if learned_opt_val:
-            regret = (opt_val - learned_opt_val) / opt_val
-            avg_regret += regret
+        if learned_opt_val is None or learned_opt_val > opt_val:
+            raise Exception("error: calculating regret")
+        regret = (opt_val - learned_opt_val) / opt_val
+        avg_regret += regret
     return avg_regret * 100 / len(learned_sols)
 
 
