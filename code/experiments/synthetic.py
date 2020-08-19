@@ -333,7 +333,7 @@ def evaluate_statistics(
     recall, precision, accuracy = get_recall_precision_wmc(
         n, target_model, learned_model, context
     )
-    reg, infeasiblity = regret(n, target_model, learned_model, context)
+    reg = regret(n, target_model, learned_model, context)
     infeasiblity = get_infeasibility_wmc(n, target_model, learned_model, context)
 
     return recall, precision, accuracy, reg, infeasiblity
