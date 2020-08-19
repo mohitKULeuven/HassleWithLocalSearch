@@ -340,25 +340,24 @@ def evaluate_statistics(
 
 
 def regret(n, target_model, learned_model, context):
-
+    learned_feasible_model = learned_model.copy()
+    for w, clause in target_model:
+        if w is None:
+            learned_feasible_model.append((w, clause))
     sol, cost = solve_weighted_max_sat(n, target_model, context, 1)
     opt_val = get_value(target_model, sol, context)
     avg_regret = 0
-    infeasible = 0
-    learned_sols, cost = solve_weighted_max_sat(n, learned_model, context, 100)
+    learned_sols, cost = solve_weighted_max_sat(
+        n, learned_feasible_model, context, 1000
+    )
+    if len(learned_sols) == 0:
+        return -1
     for learned_sol in learned_sols:
         learned_opt_val = get_value(target_model, learned_sol, context)
-        if not learned_opt_val:
-            infeasible += 1
-        else:
-            regret = (opt_val - learned_opt_val) * 100 / opt_val
+        if learned_opt_val:
+            regret = (opt_val - learned_opt_val) / opt_val
             avg_regret += regret
-    if infeasible < len(learned_sols):
-        avg_regret = avg_regret / (len(learned_sols) - infeasible)
-    else:
-        avg_regret = -1
-
-    return avg_regret, infeasible * 100 / len(learned_sols)
+    return avg_regret * 100 / len(learned_sols)
 
 
 def get_learned_model(time_taken, max_cutoff, cutoff):
