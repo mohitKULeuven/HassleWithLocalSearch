@@ -28,7 +28,7 @@ CLI.add_argument(
     ],
 )
 CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
-CLI.add_argument("--folder", type=str, default="results/num_vars_MILP/")
+CLI.add_argument("--folder", type=str, default="results/complexity/")
 CLI.add_argument("--file", type=str, default="evaluation")
 CLI.add_argument("--type", type=str, default="learned")
 args = CLI.parse_args()
@@ -42,7 +42,7 @@ data["accuracy"] = data["accuracy"].replace(-1, np.nan)
 data["regret"] = data["regret"].replace(-1, np.nan)
 data["accuracy"] = data["accuracy"] / 100
 # data["f1_score"] = data["f1_score"] / 100
-data["infeasiblity"] = data["infeasiblity"] / 100
+data["infeasiblity"] = 1 - (data["infeasiblity"] / 100)
 data["regret"] = data["regret"] / 100
 data["score"] = data["score"] / 100
 
@@ -51,7 +51,7 @@ def std_err(x):
     return np.std(x) / np.sqrt(len(x))
 
 
-linestyles = ["s-", "o-", "^-", "p-", "*-"]
+linestyles = ["s-", "o-", "^-", "D-", ">-"]
 if args.type == "line":
     fig, ax = plt.subplots(
         len(args.aggregate),
@@ -122,7 +122,7 @@ if args.type == "line":
             elif stats == "regret":
                 ax[i, j].set_ylim(0.009, 0.03)
             elif stats == "infeasiblity":
-                ax[i, j].set_ylim(0.03, 0.25)
+                ax[i, j].set_ylim(0, 0.25)
             handles, labels = ax[i, j].get_legend_handles_labels()
 
     for i, l in enumerate(labels):
@@ -136,6 +136,12 @@ if args.type == "line":
         loc="upper center",
         ncol=3,
         bbox_to_anchor=(0.35, 1.0, 0.2, 0),
+    )
+    plt.savefig(
+        args.folder + "synthetic_" + args.file + ".png",
+        bbox_extra_artists=(lgd,),
+        bbox_inches="tight",
+        pad_inches=0.35,
     )
     plt.savefig(
         args.folder + "synthetic_" + args.file + ".pdf",
@@ -165,7 +171,7 @@ elif args.type == "learned":
         std_table_df = pd.DataFrame(std_table.to_records())
         line_mean_df = mean_table_df.pivot(index=aggr[0], columns=aggr[1], values=stats)
         line_std_df = std_table_df.pivot(index=aggr[0], columns=aggr[1], values=stats)
-        line_mean_df.plot(rot=0, ax=ax[i], yerr=line_std_df)
+        line_mean_df.plot(rot=0, ax=ax[i], style=linestyles)
         ax[i].get_legend().remove()
         if aggr[0] == "num_vars":
             ax[i].set_xticks([8, 10, 12])
@@ -190,6 +196,13 @@ elif args.type == "learned":
     )
     plt.savefig(
         args.folder + "synthetic_" + args.file + "_models_learned.pdf",
+        # args.folder + "models_learned_vs_num_context.png",
+        bbox_extra_artists=(lgd,),
+        bbox_inches="tight",
+        pad_inches=0.02,
+    )
+    plt.savefig(
+        args.folder + "synthetic_" + args.file + "_models_learned.png",
         # args.folder + "models_learned_vs_num_context.png",
         bbox_extra_artists=(lgd,),
         bbox_inches="tight",

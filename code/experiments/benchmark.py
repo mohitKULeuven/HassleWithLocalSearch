@@ -405,19 +405,19 @@ if __name__ == "__main__":
     CLI.add_argument("--function", type=str, default="generate")
     CLI.add_argument("--path", type=str, default="cnfs/3cnf_benchmark/")
     CLI.add_argument("--filename", nargs="*", type=str, default=[])
-    CLI.add_argument("--per_soft", nargs="*", type=int, default=[10, 50])
+    CLI.add_argument("--per_soft", nargs="*", type=int, default=[50])
     CLI.add_argument(
         "--model_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
     )
-    CLI.add_argument("--num_context", nargs="*", type=int, default=[25, 50])
+    CLI.add_argument("--num_context", nargs="*", type=int, default=[250, 500, 1000])
     CLI.add_argument(
         "--context_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
     )
-    CLI.add_argument("--num_pos", type=int, default=10)
-    CLI.add_argument("--num_neg", type=int, default=10)
-    CLI.add_argument("--neg_type", type=str, default="both")
+    CLI.add_argument("--num_pos", type=int, default=2)
+    CLI.add_argument("--num_neg", type=int, default=2)
+    CLI.add_argument("--neg_type", type=str, default=None)
     CLI.add_argument("--sample_size", type=int, default=1000)
-    CLI.add_argument("--num_constraints", type=int, default=50)
+    CLI.add_argument("--num_constraints", type=int, default=20)
     CLI.add_argument(
         "--method",
         nargs="*",
@@ -426,7 +426,7 @@ if __name__ == "__main__":
     )
     CLI.add_argument("--cutoff", nargs="*", type=int, default=[2, 10, 60])
     CLI.add_argument("--weighted", type=int, default=1)
-    CLI.add_argument("--noise", nargs="*", type=float, default=[0.05, 0.1, 0.2])
+    CLI.add_argument("--noise", nargs="*", type=float, default=[0])
     CLI.add_argument("--clause_len", type=int, default=3)
     args = CLI.parse_args()
 
