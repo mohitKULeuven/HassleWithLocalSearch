@@ -16,7 +16,7 @@ from code.pysat_solver import solve_weighted_max_sat, get_value, label_instance
 from code.local_search import learn_weighted_max_sat
 
 from code.milp_learner import learn_weighted_max_sat_MILP
-from code.verify import get_recall_precision_wmc
+from code.verify import get_recall_precision_wmc, get_infeasibility_wmc
 
 
 def generate(args):
@@ -334,6 +334,7 @@ def evaluate_statistics(
         n, target_model, learned_model, context
     )
     reg, infeasiblity = regret(n, target_model, learned_model, context)
+    infeasiblity = get_infeasibility_wmc(n, target_model, learned_model, context)
 
     return recall, precision, accuracy, reg, infeasiblity
 

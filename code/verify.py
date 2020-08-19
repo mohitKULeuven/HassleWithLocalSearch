@@ -96,6 +96,26 @@ def get_recall_precision_wmc(
     return recall, precision, accuracy
 
 
+def get_infeasibility_wmc(
+    n: int, true_model: MaxSatModel, learned_model: MaxSatModel, context: Context
+):
+    manager = get_sdd_manager(n)
+    true_feasible_model = []
+    for w, clause in true_model:
+        if w is None:
+            true_feasible_model.append((w, clause))
+    true_logic = convert_to_logic(manager, n, true_feasible_model, context)
+    learned_logic = convert_to_logic(manager, n, learned_model, context)
+    combined = true_logic & learned_logic
+
+    learned_count, combined_count = (
+        l.global_model_count() for l in (learned_logic, combined)
+    )
+    if learned_count == 0:
+        return -1
+    return combined_count * 100 / learned_count
+
+
 def get_recall_precision_sampling(
     n,
     true_model: MaxSatModel,

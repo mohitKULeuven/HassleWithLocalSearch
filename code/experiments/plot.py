@@ -20,17 +20,17 @@ CLI.add_argument(
     nargs="*",
     type=str,
     default=[
-        # "model_learned",
-        "score",
-        "accuracy",
-        "infeasiblity",
-        "regret",
+        "model_learned",
+        # "score",
+        # "accuracy",
+        # "infeasiblity",
+        # "regret",
     ],
 )
 CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
-CLI.add_argument("--folder", type=str, default="results/synthetic/")
+CLI.add_argument("--folder", type=str, default="results/num_vars_MILP/")
 CLI.add_argument("--file", type=str, default="evaluation")
-CLI.add_argument("--type", type=str, default="line")
+CLI.add_argument("--type", type=str, default="learned")
 args = CLI.parse_args()
 
 result_file = args.folder + args.file + ".csv"
@@ -150,6 +150,7 @@ elif args.type == "learned":
     for i, aggr in enumerate([["num_context", "method"], ["num_vars", "method"]]):
         if aggr[0] == "num_vars":
             tmp_data = data.loc[data["num_context"] == 50]
+            tmp_data = data.loc[data["num_vars"] != 15]
         if aggr[0] == "num_context":
             tmp_data = data.loc[data["num_vars"] == 10]
         # tmp_data = data
@@ -167,7 +168,7 @@ elif args.type == "learned":
         line_mean_df.plot(rot=0, ax=ax[i], yerr=line_std_df)
         ax[i].get_legend().remove()
         if aggr[0] == "num_vars":
-            ax[i].set_xticks([8, 10, 12, 15])
+            ax[i].set_xticks([8, 10, 12])
             ax[i].set_xlabel("Number of Variables")
         if aggr[0] == "num_context":
             ax[i].set_xticks([25, 50, 100])
@@ -188,7 +189,7 @@ elif args.type == "learned":
         ncol=2,
     )
     plt.savefig(
-        args.folder + "synthetic_" + args.file + "_models_learned.png",
+        args.folder + "synthetic_" + args.file + "_models_learned.pdf",
         # args.folder + "models_learned_vs_num_context.png",
         bbox_extra_artists=(lgd,),
         bbox_inches="tight",
