@@ -224,11 +224,11 @@ def evaluate(args, bl):
 
                         recall, precision, accuracy, regret = -1, -1, -1, -1
                         if learned_model:
-                            recall, precision, accuracy, regret, infeasiblity, f1_random, reg_random, inf_random = evaluate_statistics(
+                            recall, precision, accuracy, regret, infeasiblity = evaluate_statistics(
                                 n,
                                 target_model,
                                 learned_model,
-                                global_context,
+                                global_context
                                 # args.sample_size,
                                 # seed,
                             )
