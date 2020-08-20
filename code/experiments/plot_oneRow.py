@@ -32,9 +32,9 @@ CLI.add_argument(
     nargs="*",
     type=str,
     default=[
-        "results/synthetic_num_vars/",
-        "results/synthetic_num_soft/",
-        "results/synthetic_num_hard/",
+        "results/synthetic_vars/",
+        "results/synthetic_soft/",
+        "results/synthetic_hard/",
     ],
 )
 CLI.add_argument("--file", type=str, default="evaluation")
@@ -64,7 +64,7 @@ for i, var in enumerate(args.aggregate_over):
     #    data["regret"] = data["infeasiblity"].replace(-1, np.nan)
     data["accuracy"] = data["accuracy"] / 100
     data["f1_score"] = data["f1_score"] / 100
-    data["infeasiblity"] = 1 - (data["infeasiblity"] / 100)
+    data["infeasiblity"] = data["infeasiblity"] / 100
     data["regret"] = data["regret"] / 100
     data["score"] = data["score"] / 100
 

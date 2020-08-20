@@ -20,17 +20,17 @@ CLI.add_argument(
     nargs="*",
     type=str,
     default=[
-        "model_learned",
-        # "score",
-        # "accuracy",
-        # "infeasiblity",
-        # "regret",
+        # "model_learned",
+        "score",
+        "accuracy",
+        "infeasiblity",
+        "regret",
     ],
 )
 CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
-CLI.add_argument("--folder", type=str, default="results/complexity/")
+CLI.add_argument("--folder", type=str, default="results/synthetic/")
 CLI.add_argument("--file", type=str, default="evaluation")
-CLI.add_argument("--type", type=str, default="learned")
+CLI.add_argument("--type", type=str, default="line")
 args = CLI.parse_args()
 
 result_file = args.folder + args.file + ".csv"
@@ -38,11 +38,9 @@ result_file = args.folder + args.file + ".csv"
 data = pd.read_csv(result_file)
 data["score"][data["accuracy"] == -1] = np.nan
 data["accuracy"] = data["accuracy"].replace(-1, np.nan)
-# data["f1_score"] = data["f1_score"].replace(-1, np.nan)
 data["regret"] = data["regret"].replace(-1, np.nan)
 data["accuracy"] = data["accuracy"] / 100
-# data["f1_score"] = data["f1_score"] / 100
-data["infeasiblity"] = 1 - (data["infeasiblity"] / 100)
+data["infeasiblity"] = data["infeasiblity"] / 100
 data["regret"] = data["regret"] / 100
 data["score"] = data["score"] / 100
 

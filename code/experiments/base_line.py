@@ -105,6 +105,7 @@ if __name__ == "__main__":
     CLI.add_argument("--cutoff", nargs="*", type=int, default=[86400])
     CLI.add_argument("--noise", nargs="*", type=float, default=[0])
     CLI.add_argument("--weighted", type=int, default=1)
+    CLI.add_argument("--neg_type", type=str, default=None)
 
     args = CLI.parse_args()
 
