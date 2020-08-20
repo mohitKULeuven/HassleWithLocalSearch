@@ -111,9 +111,10 @@ def get_infeasibility_wmc(
     learned_count, combined_count = (
         l.global_model_count() for l in (learned_logic, combined)
     )
+    inf = learned_count - combined_count
     if learned_count == 0:
         return -1
-    return combined_count * 100 / learned_count
+    return inf * 100 / learned_count
 
 
 def get_recall_precision_sampling(
