@@ -25,9 +25,12 @@ def solve_weighted_max_sat(
     c = WCNF()
     c.nv = n
     for w, clause in model:
-        c.append(list(map(int, list(clause))), weight=w)
+        #c.append(list(map(int, list(clause))), weight=w)
+        if w != 0 and len(clause) > 0:
+            c.append(list(map(int, list(clause))), weight=w)
     if len(context) > 0:
-        c.append(list(map(int, list(context))), weight=None)
+        #c.append(list(map(int, list(context))), weight=None)
+        c.append(list(map(int, list(context))))
     s = RC2(c)
     sol = []
     cst = -1
@@ -43,6 +46,8 @@ def solve_weighted_max_sat(
         m = [v > 0 for v in m]
         if m not in prev_sol:
             sol.append(m)
+        if len(sol) >= num_sol:
+            break
     if num_sol == 1 and sol:
         return sol[0], cst
     return sol, cst
@@ -76,11 +81,11 @@ def get_value(model: MaxSatModel, instance: Instance, context=None) -> Optional[
     Returns the weighted value of an instance
     """
     model = copy.deepcopy(model)
-    if context:
+    if context is not None and len(context) > 0:
         model.append((None, context))
     value = 0
     for weight, clause in model:
-        covered = any(
+        covered = len(clause) > 0 and any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
         if weight is None:
@@ -115,6 +120,8 @@ def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> 
     if value is None:
         return False
     best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
+    if cst < 0:
+        return False
     best_value = get_value(model, best_instance, context)
     return value == best_value
 

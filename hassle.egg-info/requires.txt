@@ -1,0 +1,4 @@
+matplotlib
+numpy
+pysdd
+python-sat

@@ -392,7 +392,7 @@ if __name__ == "__main__":
     )
     CLI.add_argument("--num_pos", type=int, default=2)
     CLI.add_argument("--num_neg", type=int, default=2)
-    CLI.add_argument("--neg_type", type=str, default=None)
+    CLI.add_argument("--neg_type", type=str, default="both")
     CLI.add_argument(
         "--method",
         nargs="*",
