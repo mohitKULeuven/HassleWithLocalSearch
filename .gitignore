@@ -6,3 +6,6 @@ __pycache__/
 /pickles/
 /results/
 /cnfs/
+/env
+/.idea/
+/hassle.egg-info
