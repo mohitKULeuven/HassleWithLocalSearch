@@ -17,16 +17,16 @@ import os
 from datetime import datetime
 import json
 
-from code.type_def import MaxSatModel, Context
-from code.generator import generate_contexts_and_data
-from code.experiments.synthetic import (
+from hassle.type_def import MaxSatModel, Context
+from hassle.generator import generate_contexts_and_data
+from hassle.experiments.synthetic import (
     learn_model_sls,
     learn_model_MILP,
     regret,
     evaluate_statistics,
 )
-from code.pysat_solver import solve_weighted_max_sat, get_value, label_instance
-from code.verify import get_recall_precision_sampling
+from hassle.pysat_solver import solve_weighted_max_sat, get_value, label_instance
+from hassle.verify import get_recall_precision_sampling
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)

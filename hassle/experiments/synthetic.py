@@ -10,13 +10,13 @@ import json
 import time
 from tqdm import tqdm
 
-from code.type_def import MaxSatModel, Context
-from code.generator import generate_models, generate_contexts_and_data
-from code.pysat_solver import solve_weighted_max_sat, get_value, label_instance
-from code.local_search import learn_weighted_max_sat
+from hassle.type_def import MaxSatModel, Context
+from hassle.generator import generate_models, generate_contexts_and_data
+from hassle.pysat_solver import solve_weighted_max_sat, get_value, label_instance
+from hassle.local_search import learn_weighted_max_sat
 
-from code.milp_learner import learn_weighted_max_sat_MILP
-from code.verify import get_recall_precision_wmc, get_infeasibility_wmc
+from hassle.milp_learner import learn_weighted_max_sat_MILP
+from hassle.verify import get_recall_precision_wmc, get_infeasibility_wmc
 
 
 def generate(args):
