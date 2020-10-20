@@ -1,6 +1,6 @@
 from .synthetic import learn_model_MILP
 from .benchmark import cnf_param, evaluate, generate
-from code.local_search import learn_weighted_max_sat
+from hassle.local_search import learn_weighted_max_sat
 import argparse
 import os
 import pickle
