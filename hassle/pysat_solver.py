@@ -115,18 +115,40 @@ def get_cost(model: MaxSatModel, instance: Instance) -> Optional[float]:
     return value
 
 
-def label_instance(model: MaxSatModel, instance: Instance, context: Context, cached_best_value = None):
+# def label_instance(model: MaxSatModel, instance: Instance, context: Context, cached_best_value=None):
+#     value = get_value(model, instance, context)
+#     if value is None:
+#         return (False, None)
+#     if cached_best_value == None:
+#         best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
+#         if cst < 0:
+#             return (False, None)
+#         best_value = get_value(model, best_instance, context)
+#     else:
+#         best_value = cached_best_value
+#     return (value == best_value, best_value)
+
+
+def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> bool:
     value = get_value(model, instance, context)
     if value is None:
-        return (False, None)
-    if cached_best_value == None:
-        best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
-        if cst < 0:
-            return (False, None)
-        best_value = get_value(model, best_instance, context)
-    else:
-        best_value = cached_best_value
-    return (value == best_value, best_value)
+        return False
+    best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
+    if cst < 0:
+        return False
+    best_value = get_value(model, best_instance, context)
+    return value == best_value
+
+
+# def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> bool:
+#     value = get_value(model, instance, context)
+#     if value is None:
+#         return False
+#     best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
+#     if cst < 0:
+#         return False
+#     best_value = get_value(model, best_instance, context)
+#     return value == best_value
 
 
 def is_infeasible(model: MaxSatModel, instance: Instance, context: Context) -> bool:
