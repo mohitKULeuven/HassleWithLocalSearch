@@ -189,8 +189,7 @@ class MaxSAT:
             for j, literal in enumerate(l[i]):
                 if literal != 0:
                     clause.append((j + 1) * literal)
-            if clause:
-                clauses.append(set(clause))
+            clauses.append(set(clause))
         return clauses
 
     def optimal_value(self, context=None):
