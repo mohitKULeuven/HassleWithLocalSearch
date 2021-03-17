@@ -127,9 +127,9 @@ def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> 
 
 
 def label_instance_with_cache(model: MaxSatModel, instance: Instance, context: Context,
-                              cached_best_value=None, value_of_instance=None):
+                              cached_best_value=None, value_of_instance=-1):
 
-    if value_of_instance is None:
+    if value_of_instance is -1:
         value = get_value(model, instance, context)
     else:
         value = value_of_instance
