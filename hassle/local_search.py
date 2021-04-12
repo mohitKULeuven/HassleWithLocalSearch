@@ -234,6 +234,7 @@ def learn_weighted_max_sat(
     phi=0.2,
     cutoff_time=5,
     seed=1,
+    observers=None
 ):
     """
     Learn a weighted MaxSAT model from examples. Contexts and clauses are set-encoded, i.e., they are represented by
@@ -267,6 +268,12 @@ def learn_weighted_max_sat(
     solutions = [model.deep_copy().maxSatModel()]
     best_scores = [score]
     time_taken = [time.time() - start]
+    for observer in observers:
+        observer.observe_generation(
+            0,
+            score/data.shape[0],
+            gen_duration=time_taken[-1]
+        )
     iterations = [0]
     itr = 0
     num_neighbours = [0]
@@ -278,6 +285,7 @@ def learn_weighted_max_sat(
         and time.time() - start < cutoff_time
         # and time.time() - last_update < 3600
     ):
+        start_iteration = time.time()
         if time.time() - last_update > cutoff_time / 4:
             # if rng.random_sample() < p:
             next_model = random_model(data.shape[1], num_constraints, clause_len, seed)
@@ -290,13 +298,17 @@ def learn_weighted_max_sat(
             if "naive" in param:
                 neighbours = model.valid_neighbours()
             else:
+                if inf:
+                    infeasible = inf
+                else:
+                    infeasible = [None] * len(data)
                 neighbours = model.get_neighbours(
                     data[index],
                     contexts[index],
                     labels[index],
                     clause_len,
                     rng,
-                    inf[index],
+                    infeasible[index],
                 )
 
             if len(neighbours) == 0 or (method != "walk_sat" and len(neighbours) < 2):
@@ -339,6 +351,12 @@ def learn_weighted_max_sat(
             best_scores.append(score)
             last_update = time.time()
             time_taken.append(last_update - start)
+        for observer in observers:
+            observer.observe_generation(
+                itr,
+                best_scores[-1] / data.shape[0],
+                gen_duration = time.time() - start_iteration
+            )
 
     for i, score in enumerate(best_scores):
         best_scores[i] = score * 100 / num_example
