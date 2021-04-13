@@ -415,9 +415,11 @@ def learn_weighted_max_sat(
             "num_neighbour": num_neighbours,
         }
     pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
-    print()
-    print(f"Timing:\ninitialisation: {initialisation_time}\nrandom_restarts: {random_restart_time}\n"
-          f"computing neighbours: {computing_neighbours_time}\n"
-          f"evaluation: {evaluation_time}\ntotal:{cumulative_time}")
+    print(f"Timing:\n"
+          f"Initialisation: {initialisation_time}\n"
+          f"Random restarts: {random_restart_time}\n"
+          f"Computing neighbours: {computing_neighbours_time}\n"
+          f"Evaluation: {evaluation_time}\n"
+          f"Total: {cumulative_time}\n")
     return solutions[-1]
     # return (solutions, best_scores, time_taken, iterations, num_neighbours)
