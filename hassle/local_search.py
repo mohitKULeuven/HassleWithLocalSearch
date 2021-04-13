@@ -260,7 +260,6 @@ def learn_weighted_max_sat(
     initialisation_time = 0
     random_restart_time = 0
     computing_neighbours_time = 0
-    computing_model_update_time = 0
     evaluation_time = 0
     cumulative_time = 0
 
@@ -277,7 +276,7 @@ def learn_weighted_max_sat(
     bar.update(score * 100 / data.shape[0])
 
     # Update cumulative time
-    cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + computing_model_update_time + evaluation_time
+    cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + evaluation_time
     
     # Some setup
     rng = np.random.RandomState(seed)
@@ -338,7 +337,7 @@ def learn_weighted_max_sat(
             computing_neighbours_time += time.time() - time_point
 
             if len(neighbours) == 0 or (method != "walk_sat" and len(neighbours) < 2):
-                cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + computing_model_update_time + evaluation_time
+                cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + evaluation_time
                 continue
             nbr += len(neighbours)
 
@@ -370,7 +369,9 @@ def learn_weighted_max_sat(
                     rng,
                     inf,
                 )
-            computing_model_update_time += time.time() - time_point
+            # Computing a model update almost entirely comes down to evaluation all the model's neighbours, so
+            # we include the time this update takes in the evaluation time
+            evaluation_time += time.time() - time_point
             
         prev_model = model
         model = next_model
@@ -378,7 +379,7 @@ def learn_weighted_max_sat(
 
         # Update cumulative time
         old_cumulative_time = cumulative_time
-        cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + computing_model_update_time + evaluation_time
+        cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + evaluation_time
         
         if score > best_scores[-1]:
             # Found a new best model
@@ -414,8 +415,9 @@ def learn_weighted_max_sat(
             "num_neighbour": num_neighbours,
         }
     pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
+    print()
     print(f"Timing:\ninitialisation: {initialisation_time}\nrandom_restarts: {random_restart_time}\n"
-          f"computing neighbours: {computing_neighbours_time}\ncomputing model update: {computing_model_update_time}\n"
+          f"computing neighbours: {computing_neighbours_time}\n"
           f"evaluation: {evaluation_time}\ntotal:{cumulative_time}")
     return solutions[-1]
     # return (solutions, best_scores, time_taken, iterations, num_neighbours)
