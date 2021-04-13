@@ -15,6 +15,7 @@ import copy
 import os
 import pickle
 from tqdm import tqdm
+import max_sat
 
 
 # def eval_neighbours(
@@ -234,6 +235,7 @@ def learn_weighted_max_sat(
     phi=0.2,
     cutoff_time=5,
     seed=1,
+    use_knowledge_compilation=False,
     observers=None
 ):
     """
@@ -249,6 +251,8 @@ def learn_weighted_max_sat(
         A Boolean numpy array (length s) where the kth entry contains the label (1 or 0) of the kth example
     :param contexts:
         A list of s set-encoded contexts.
+    :param use_knowledge_compilation:
+        A Boolean flag denoting whether evaluation of a model's neighbours should use knowledge compilation
     :return:
         A list of weights and clauses. Every entry of the list is a tuple containing as first element None for hard
         constraints (clauses) or a floating point number for soft constraints, and as second element a set-encoded clause.
@@ -271,6 +275,8 @@ def learn_weighted_max_sat(
     # Evaluating the initial model
     bar = tqdm("Score", total=100)
     time_point = time.time()
+    # TODO: also use knowledge compilation based evaluation here if the flag is set
+    # TODO: make sure both give the exact same result
     score, correct_examples = model.score(data, labels, contexts, inf)
     evaluation_time += time.time() - time_point
     bar.update(score * 100 / data.shape[0])
@@ -295,7 +301,7 @@ def learn_weighted_max_sat(
     num_neighbours = [0]
     nbr = 0
     num_example = data.shape[0]
-    last_update_time = 0
+    last_update_time = cumulative_time
 
     while (
         score < len(labels)
@@ -310,6 +316,7 @@ def learn_weighted_max_sat(
             random_restart_time += time.time() - time_point
 
             time_point = time.time()
+            # TODO: also use knowledge compilation based evaluation here if the flag is set
             score, correct_examples = next_model.score(data, labels, contexts, inf)
             evaluation_time += time.time() - time_point
 
@@ -343,32 +350,38 @@ def learn_weighted_max_sat(
 
             # Compute model update
             time_point = time.time()
-            if method == "walk_sat":
-                next_model, score = walk_sat(
-                    neighbours, data, labels, contexts, rng, inf
-                )
-            elif method == "novelty":
-                next_model, score = novelty(
-                    prev_model, neighbours, data, labels, contexts, rng, inf
-                )
-            elif method == "novelty_plus":
-                next_model, score = novelty_plus(
-                    prev_model, neighbours, data, labels, contexts, wp, rng, inf
-                )
-            elif method == "adaptive_novelty_plus":
-                next_model, score, wp = adaptive_novelty_plus(
-                    prev_model,
-                    neighbours,
-                    data,
-                    labels,
-                    contexts,
-                    wp,
-                    theta,
-                    phi,
-                    best_scores,
-                    rng,
-                    inf,
-                )
+            if use_knowledge_compilation:
+                examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
+                # If evaluation should use knowledge compilation, walk_sat is automatically used at present
+                next_model, score_as_proportion = max_sat.compute_best_neighbour_knowledge_compilation(neighbours, examples)
+                score = round(score_as_proportion * len(examples))
+            else:
+                if method == "walk_sat":
+                    next_model, score = walk_sat(
+                        neighbours, data, labels, contexts, rng, inf
+                    )
+                elif method == "novelty":
+                    next_model, score = novelty(
+                        prev_model, neighbours, data, labels, contexts, rng, inf
+                    )
+                elif method == "novelty_plus":
+                    next_model, score = novelty_plus(
+                        prev_model, neighbours, data, labels, contexts, wp, rng, inf
+                    )
+                elif method == "adaptive_novelty_plus":
+                    next_model, score, wp = adaptive_novelty_plus(
+                        prev_model,
+                        neighbours,
+                        data,
+                        labels,
+                        contexts,
+                        wp,
+                        theta,
+                        phi,
+                        best_scores,
+                        rng,
+                        inf,
+                    )
             # Computing a model update almost entirely comes down to evaluation all the model's neighbours, so
             # we include the time this update takes in the evaluation time
             evaluation_time += time.time() - time_point
