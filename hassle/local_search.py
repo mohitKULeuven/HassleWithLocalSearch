@@ -275,9 +275,12 @@ def learn_weighted_max_sat(
     # Evaluating the initial model
     bar = tqdm("Score", total=100)
     time_point = time.time()
-    # TODO: also use knowledge compilation based evaluation here if the flag is set
-    # TODO: make sure both give the exact same result
-    score, correct_examples = model.score(data, labels, contexts, inf)
+    if use_knowledge_compilation:
+        examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
+        model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
+        score = int(max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples) * len(examples))
+    else:
+        score, correct_examples = model.score(data, labels, contexts, inf)
     evaluation_time += time.time() - time_point
     bar.update(score * 100 / data.shape[0])
 
@@ -316,8 +319,11 @@ def learn_weighted_max_sat(
             random_restart_time += time.time() - time_point
 
             time_point = time.time()
-            # TODO: also use knowledge compilation based evaluation here if the flag is set
-            score, correct_examples = next_model.score(data, labels, contexts, inf)
+            if use_knowledge_compilation:
+                model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
+                score = int(max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)*len(examples))
+            else:
+                score, correct_examples = next_model.score(data, labels, contexts, inf)
             evaluation_time += time.time() - time_point
 
         else:
@@ -351,7 +357,6 @@ def learn_weighted_max_sat(
             # Compute model update
             time_point = time.time()
             if use_knowledge_compilation:
-                examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
                 # If evaluation should use knowledge compilation, walk_sat is automatically used at present
                 next_model, score_as_proportion = max_sat.compute_best_neighbour_knowledge_compilation(neighbours, examples)
                 score = round(score_as_proportion * len(examples))
