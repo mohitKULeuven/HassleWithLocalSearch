@@ -278,7 +278,7 @@ def learn_weighted_max_sat(
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
         model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
-        score = int(max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples) * len(examples))
+        score = int(max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)[0] * len(examples))
     else:
         score, correct_examples = model.score(data, labels, contexts, inf)
     evaluation_time += time.time() - time_point
@@ -297,7 +297,12 @@ def learn_weighted_max_sat(
         observer.observe_generation(
             gen_count=0,
             best_score=score/data.shape[0],
-            gen_duration=time_taken[-1]
+            gen_duration=time_taken[-1],
+            cumulative_time=cumulative_time,
+            initialisation_time=initialisation_time,
+            random_restart_time=random_restart_time,
+            computing_neighbours_time=computing_neighbours_time,
+            evaluation_time=evaluation_time
         )
     iterations = [0]
     itr = 0
@@ -321,7 +326,7 @@ def learn_weighted_max_sat(
             time_point = time.time()
             if use_knowledge_compilation:
                 model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
-                score = int(max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)*len(examples))
+                score = int(max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)[0]*len(examples))
             else:
                 score, correct_examples = next_model.score(data, labels, contexts, inf)
             evaluation_time += time.time() - time_point
@@ -412,7 +417,12 @@ def learn_weighted_max_sat(
             observer.observe_generation(
                 itr,
                 best_scores[-1] / data.shape[0],
-                gen_duration = cumulative_time - old_cumulative_time
+                gen_duration = cumulative_time - old_cumulative_time,
+                cumulative_time=cumulative_time,
+                initialisation_time=initialisation_time,
+                random_restart_time=random_restart_time,
+                computing_neighbours_time=computing_neighbours_time,
+                evaluation_time=evaluation_time
             )
 
     for i, score in enumerate(best_scores):
@@ -433,6 +443,7 @@ def learn_weighted_max_sat(
             "num_neighbour": num_neighbours,
         }
     pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
+    print(f"Iterations: {itr}")
     print(f"Timing:\n"
           f"Initialisation: {initialisation_time}\n"
           f"Random restarts: {random_restart_time}\n"
