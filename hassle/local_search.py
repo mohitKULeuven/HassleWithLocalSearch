@@ -16,6 +16,7 @@ import os
 import pickle
 from tqdm import tqdm
 import max_sat
+import random
 
 
 # def eval_neighbours(
@@ -90,15 +91,18 @@ def eval_neighbours(neighbours, data, labels, contexts, num_neighbours, rng, inf
 
     lst_scores = []
     lst_models = []
+    lst_correct_examples = []
     for _ in range(num_neighbours):
         lst_scores.append(max(scores))
         best_index = rng.choice(
             [i for i, v in enumerate(scores) if v == lst_scores[-1]]
         )
         lst_models.append(neighbours[best_index])
+        lst_correct_examples.append(next_correct_examples[best_index])
         del scores[best_index]
         del neighbours[best_index]
-    return lst_models, lst_scores
+        next_correct_examples = np.delete(next_correct_examples, best_index, 0)
+    return lst_models, lst_scores, lst_correct_examples
 
 
 def walk_sat(neighbours, data, labels, contexts, rng, inf=None):
@@ -107,10 +111,10 @@ def walk_sat(neighbours, data, labels, contexts, rng, inf=None):
     #     next_model = neighbours[rng.randint(0, len(neighbours))]
     #     score, correct_examples = next_model.score(data, labels, contexts, inf)
     #     return next_model, score
-    next_models, scores = eval_neighbours(
+    next_models, scores, correct_examples = eval_neighbours(
         neighbours, data, labels, contexts, 1, rng, inf
     )
-    return next_models[0], scores[0]
+    return next_models[0], scores[0], correct_examples[0]
 
 
 def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None):
@@ -118,20 +122,20 @@ def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None):
     #     next_model = neighbours[rng.randint(0, len(neighbours))]
     #     score, correct_examples = next_model.score(data, labels, contexts, inf)
     #     return next_model, score
-    lst_models, lst_scores = eval_neighbours(
+    lst_models, lst_scores, lst_correct_examples = eval_neighbours(
         neighbours, data, labels, contexts, 2, rng, inf
     )
     if not lst_models[0].is_same(prev_model):
-        return lst_models[0], lst_scores[0]
+        return lst_models[0], lst_scores[0], lst_correct_examples[0]
     else:
-        return lst_models[1], lst_scores[1]
+        return lst_models[1], lst_scores[1], lst_correct_examples[1]
 
 
 def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=None):
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
         score, correct_examples = next_model.score(data, labels, contexts, inf)
-        return next_model, score
+        return next_model, score, correct_examples
     return novelty(prev_model, neighbours, data, labels, contexts, rng, inf)
 
 
@@ -157,11 +161,11 @@ def adaptive_novelty_plus(
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
         score, correct_examples = next_model.score(data, labels, contexts, inf)
-        return next_model, score, wp
-    next_model, score = novelty(
+        return next_model, score, correct_examples, wp
+    next_model, score, correct_examples = novelty(
         prev_model, neighbours, data, labels, contexts, rng, inf
     )
-    return next_model, score, wp
+    return next_model, score, correct_examples, wp
 
 
 def ternary(n, length):
@@ -236,6 +240,7 @@ def learn_weighted_max_sat(
     cutoff_time=5,
     seed=1,
     use_knowledge_compilation=False,
+    recompute_random_incorrect_examples=False,
     observers=None
 ):
     """
@@ -278,7 +283,8 @@ def learn_weighted_max_sat(
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
         model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
-        score = int(max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)[0] * len(examples))
+        score_as_proportion, correct_examples = max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)
+        score = int(score_as_proportion * len(examples))
     else:
         score, correct_examples = model.score(data, labels, contexts, inf)
     evaluation_time += time.time() - time_point
@@ -326,20 +332,25 @@ def learn_weighted_max_sat(
             time_point = time.time()
             if use_knowledge_compilation:
                 model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
-                score = int(max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)[0]*len(examples))
+                score_as_proportion, correct_examples =\
+                    max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)
+                score = int(score_as_proportion * len(examples))
             else:
                 score, correct_examples = next_model.score(data, labels, contexts, inf)
             evaluation_time += time.time() - time_point
-
+            cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + evaluation_time
+            last_update_time = cumulative_time
         else:
             # Compute neighbourhood
             time_point = time.time()
             if "naive" in param:
                 neighbours = model.valid_neighbours()
             else:
-                index = random_incorrect_example_index(
-                    model, data, contexts, labels, inf, rng
-                )
+                if recompute_random_incorrect_examples:
+                    index = random_incorrect_example_index(model, data, contexts, labels, inf, rng)
+                else:
+                    index = random.choice([i for i in range(len(correct_examples)) if correct_examples[i] == 0])
+
                 if inf:
                     infeasible = inf
                 else:
@@ -363,23 +374,23 @@ def learn_weighted_max_sat(
             time_point = time.time()
             if use_knowledge_compilation:
                 # If evaluation should use knowledge compilation, walk_sat is automatically used at present
-                next_model, score_as_proportion = max_sat.compute_best_neighbour_knowledge_compilation(neighbours, examples)
+                next_model, score_as_proportion, correct_examples = max_sat.compute_best_neighbour_knowledge_compilation(neighbours, examples)
                 score = round(score_as_proportion * len(examples))
             else:
                 if method == "walk_sat":
-                    next_model, score = walk_sat(
+                    next_model, score, correct_examples = walk_sat(
                         neighbours, data, labels, contexts, rng, inf
                     )
                 elif method == "novelty":
-                    next_model, score = novelty(
+                    next_model, score, correct_examples = novelty(
                         prev_model, neighbours, data, labels, contexts, rng, inf
                     )
                 elif method == "novelty_plus":
-                    next_model, score = novelty_plus(
+                    next_model, score, correct_examples = novelty_plus(
                         prev_model, neighbours, data, labels, contexts, wp, rng, inf
                     )
                 elif method == "adaptive_novelty_plus":
-                    next_model, score, wp = adaptive_novelty_plus(
+                    next_model, score, correct_examples, wp = adaptive_novelty_plus(
                         prev_model,
                         neighbours,
                         data,
