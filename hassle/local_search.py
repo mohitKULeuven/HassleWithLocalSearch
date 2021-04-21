@@ -304,6 +304,8 @@ def learn_weighted_max_sat(
             gen_count=0,
             best_score=score/data.shape[0],
             gen_duration=time_taken[-1],
+            current_score=score/data.shape[0],
+            number_of_neighbours=0,
             cumulative_time=cumulative_time,
             initialisation_time=initialisation_time,
             random_restart_time=random_restart_time,
@@ -427,8 +429,10 @@ def learn_weighted_max_sat(
         for observer in observers:
             observer.observe_generation(
                 itr,
-                best_scores[-1] / data.shape[0],
-                gen_duration = cumulative_time - old_cumulative_time,
+                best_scores[-1]/data.shape[0],
+                gen_duration=cumulative_time-old_cumulative_time,
+                current_score=score/data.shape[0],
+                number_of_neighbours=len(neighbours),
                 cumulative_time=cumulative_time,
                 initialisation_time=initialisation_time,
                 random_restart_time=random_restart_time,
