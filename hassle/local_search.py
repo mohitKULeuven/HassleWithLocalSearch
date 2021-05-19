@@ -15,7 +15,7 @@ import copy
 import os
 import pickle
 from tqdm import tqdm
-import max_sat
+#import max_sat
 import random
 
 
@@ -240,7 +240,7 @@ def learn_weighted_max_sat(
     cutoff_time=5,
     seed=1,
     use_knowledge_compilation=False,
-    recompute_random_incorrect_examples=False,
+    recompute_random_incorrect_examples=True,
     observers=None
 ):
     """
@@ -298,19 +298,24 @@ def learn_weighted_max_sat(
     prev_model = model
     solutions = [model.deep_copy().maxSatModel()]
     best_scores = [score]
+    best_model_correct_examples = [correct_examples]
     time_taken = [cumulative_time]
+    random_restart_count = 0
     for observer in observers:
         observer.observe_generation(
             gen_count=0,
             best_score=score/data.shape[0],
             gen_duration=time_taken[-1],
+            current_model_correct_examples=correct_examples,
+            best_model_correct_examples=best_model_correct_examples[-1],
             current_score=score/data.shape[0],
             number_of_neighbours=0,
             cumulative_time=cumulative_time,
             initialisation_time=initialisation_time,
             random_restart_time=random_restart_time,
             computing_neighbours_time=computing_neighbours_time,
-            evaluation_time=evaluation_time
+            evaluation_time=evaluation_time,
+            random_restart_count=random_restart_count
         )
     iterations = [0]
     itr = 0
@@ -327,6 +332,7 @@ def learn_weighted_max_sat(
             # if rng.random_sample() < p:
 
             # Random restart
+            random_restart_count += 1
             time_point = time.time()
             next_model = random_model(data.shape[1], num_constraints, clause_len, seed)
             random_restart_time += time.time() - time_point
@@ -424,6 +430,7 @@ def learn_weighted_max_sat(
             iterations.append(itr)
             num_neighbours.append(nbr)
             best_scores.append(score)
+            best_model_correct_examples.append(correct_examples)
             last_update_time = cumulative_time
             time_taken.append(cumulative_time)
         for observer in observers:
@@ -431,13 +438,16 @@ def learn_weighted_max_sat(
                 itr,
                 best_scores[-1]/data.shape[0],
                 gen_duration=cumulative_time-old_cumulative_time,
+                current_model_correct_examples=correct_examples,
+                best_model_correct_examples=best_model_correct_examples[-1],
                 current_score=score/data.shape[0],
                 number_of_neighbours=len(neighbours),
                 cumulative_time=cumulative_time,
                 initialisation_time=initialisation_time,
                 random_restart_time=random_restart_time,
                 computing_neighbours_time=computing_neighbours_time,
-                evaluation_time=evaluation_time
+                evaluation_time=evaluation_time,
+                random_restart_count=random_restart_count
             )
 
     for i, score in enumerate(best_scores):
