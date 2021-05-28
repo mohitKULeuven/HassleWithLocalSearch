@@ -440,11 +440,16 @@ def learn_weighted_max_sat(
         if method == "novelty_large":
             # Only have to keep track of multiple previous models when we are using novelty_large
 <<<<<<< HEAD
+<<<<<<< HEAD
             window_size = 10
             if len(prev_models) < window_size:
                 prev_models.append(model)
             else:
                 prev_models = prev_models[1:] + [prev_model]
+=======
+            # TODO: make this a window of the previous X models
+            prev_models.append(model)
+>>>>>>> 38f45d7dff623ed8307505184f32577a8fb8496f
 =======
             # TODO: make this a window of the previous X models
             prev_models.append(model)
