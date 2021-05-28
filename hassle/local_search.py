@@ -15,7 +15,7 @@ import copy
 import os
 import pickle
 from tqdm import tqdm
-#import max_sat
+import max_sat
 import random
 
 
@@ -105,38 +105,55 @@ def eval_neighbours(neighbours, data, labels, contexts, num_neighbours, rng, inf
     return lst_models, lst_scores, lst_correct_examples
 
 
-def walk_sat(neighbours, data, labels, contexts, rng, inf=None):
-    # prev_score = len(correct_examples)
-    # if rng.random_sample() < p:
-    #     next_model = neighbours[rng.randint(0, len(neighbours))]
-    #     score, correct_examples = next_model.score(data, labels, contexts, inf)
-    #     return next_model, score
-    next_models, scores, correct_examples = eval_neighbours(
-        neighbours, data, labels, contexts, 1, rng, inf
-    )
+def walk_sat(neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False):
+    if use_knowledge_compilation:
+        examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
+        next_models, scores, correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples)
+        scores = [round(score_as_proportion * len(examples)) for score_as_proportion in scores]
+    else:
+        next_models, scores, correct_examples = eval_neighbours(
+            neighbours, data, labels, contexts, 1, rng, inf
+        )
     return next_models[0], scores[0], correct_examples[0]
 
 
-def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None):
-    # if rng.random_sample() < p:
-    #     next_model = neighbours[rng.randint(0, len(neighbours))]
-    #     score, correct_examples = next_model.score(data, labels, contexts, inf)
-    #     return next_model, score
-    lst_models, lst_scores, lst_correct_examples = eval_neighbours(
-        neighbours, data, labels, contexts, 2, rng, inf
-    )
+def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False):
+    if use_knowledge_compilation:
+        examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
+        lst_models, lst_scores, lst_correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples)
+        lst_scores = [round(score_as_proportion * len(examples)) for score_as_proportion in lst_scores]
+    else:
+        lst_models, lst_scores, lst_correct_examples = eval_neighbours(
+            neighbours, data, labels, contexts, 2, rng, inf
+        )
     if not lst_models[0].is_same(prev_model):
         return lst_models[0], lst_scores[0], lst_correct_examples[0]
     else:
         return lst_models[1], lst_scores[1], lst_correct_examples[1]
 
+def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False):
+    if use_knowledge_compilation:
+        examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
+        lst_models, lst_scores, lst_correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples)
+        lst_scores = [round(score_as_proportion * len(examples)) for score_as_proportion in lst_scores]
+    else:
+        lst_models, lst_scores, lst_correct_examples = eval_neighbours(
+            neighbours, data, labels, contexts, 2, rng, inf
+        )
+    for i in range(len(lst_models)):
+        # Return the best model that is not part of prev_models
+        next_best_model = lst_models[i]
+        if not any([next_best_model.is_same(a_model) for a_model in prev_models]):
+            return next_best_model, lst_scores[i], lst_correct_examples[i]
+    # If all models are part of prev_models, we might as well return the best one
+    return lst_models[0], lst_scores[0], lst_correct_examples[0]
 
-def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=None):
+def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=None, use_knowledge_compilation=False):
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
         score, correct_examples = next_model.score(data, labels, contexts, inf)
         return next_model, score, correct_examples
-    return novelty(prev_model, neighbours, data, labels, contexts, rng, inf)
+    return novelty(prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation)
 
 
 def adaptive_novelty_plus(
@@ -151,6 +168,7 @@ def adaptive_novelty_plus(
     best_scores,
     rng,
     inf=None,
+    use_knowledge_compilation=False
 ):
     steps = int(len(labels) * theta)
     if len(best_scores) > steps:
@@ -163,7 +181,7 @@ def adaptive_novelty_plus(
         score, correct_examples = next_model.score(data, labels, contexts, inf)
         return next_model, score, correct_examples, wp
     next_model, score, correct_examples = novelty(
-        prev_model, neighbours, data, labels, contexts, rng, inf
+        prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation
     )
     return next_model, score, correct_examples, wp
 
@@ -296,6 +314,7 @@ def learn_weighted_max_sat(
     # Some setup
     rng = np.random.RandomState(seed)
     prev_model = model
+    prev_models = [model]
     solutions = [model.deep_copy().maxSatModel()]
     best_scores = [score]
     best_model_correct_examples = [correct_examples]
@@ -325,8 +344,9 @@ def learn_weighted_max_sat(
     last_update_time = cumulative_time
 
     while (
-        score < len(labels)
-        and cumulative_time < cutoff_time
+        #score < len(labels)
+        #and
+        cumulative_time < cutoff_time
     ):
         if cumulative_time - last_update_time > cutoff_time / 4:
             # if rng.random_sample() < p:
@@ -380,42 +400,50 @@ def learn_weighted_max_sat(
 
             # Compute model update
             time_point = time.time()
-            if use_knowledge_compilation:
-                # If evaluation should use knowledge compilation, walk_sat is automatically used at present
-                next_model, score_as_proportion, correct_examples = max_sat.compute_best_neighbour_knowledge_compilation(neighbours, examples)
-                score = round(score_as_proportion * len(examples))
-            else:
-                if method == "walk_sat":
-                    next_model, score, correct_examples = walk_sat(
-                        neighbours, data, labels, contexts, rng, inf
-                    )
-                elif method == "novelty":
-                    next_model, score, correct_examples = novelty(
-                        prev_model, neighbours, data, labels, contexts, rng, inf
-                    )
-                elif method == "novelty_plus":
-                    next_model, score, correct_examples = novelty_plus(
-                        prev_model, neighbours, data, labels, contexts, wp, rng, inf
-                    )
-                elif method == "adaptive_novelty_plus":
-                    next_model, score, correct_examples, wp = adaptive_novelty_plus(
-                        prev_model,
-                        neighbours,
-                        data,
-                        labels,
-                        contexts,
-                        wp,
-                        theta,
-                        phi,
-                        best_scores,
-                        rng,
-                        inf,
-                    )
+
+            if method == "walk_sat":
+                next_model, score, correct_examples = walk_sat(
+                    neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation
+                )
+            elif method == "novelty":
+                next_model, score, correct_examples = novelty(
+                    prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation
+                )
+            elif method == "novelty_large":
+                next_model, score, correct_examples = novelty_large(
+                    prev_models, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation
+                )
+            elif method == "novelty_plus":
+                next_model, score, correct_examples = novelty_plus(
+                    prev_model, neighbours, data, labels, contexts, wp, rng, inf, use_knowledge_compilation
+                )
+            elif method == "adaptive_novelty_plus":
+                next_model, score, correct_examples, wp = adaptive_novelty_plus(
+                    prev_model,
+                    neighbours,
+                    data,
+                    labels,
+                    contexts,
+                    wp,
+                    theta,
+                    phi,
+                    best_scores,
+                    rng,
+                    inf,
+                    use_knowledge_compilation
+                )
             # Computing a model update almost entirely comes down to evaluation all the model's neighbours, so
             # we include the time this update takes in the evaluation time
             evaluation_time += time.time() - time_point
             
         prev_model = model
+        if method == "novelty_large":
+            # Only have to keep track of multiple previous models when we are using novelty_large
+            window_size = 10
+            if len(prev_models) < window_size:
+                prev_models.append(model)
+            else:
+                prev_models = prev_models[1:] + [prev_model]
         model = next_model
         itr += 1
 
