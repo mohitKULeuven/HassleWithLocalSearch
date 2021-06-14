@@ -48,7 +48,7 @@ class MaxSAT:
         self.n = n
 
     def get_neighbours(
-        self, example, context, label, clause_len, rng, infeasible=None, w=1
+        self, example, context, label, clause_len, rng, infeasible=None, w=1, conjunctive_contexts=0
     ):
         # val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
         if not label:
@@ -58,10 +58,10 @@ class MaxSAT:
                 neighbours = neighbours_pos_inf(self, example, context, rng, w)
             else:
                 neighbours = neighbours_pos_sub(self, example, context, rng, w)
-        elif get_value(self.maxSatModel(), example, context) is None:
+        elif get_value(self.maxSatModel(), example, context, conjunctive_contexts=conjunctive_contexts) is None:
             neighbours = neighbours_inf(self, example, context, clause_len, rng)
         else:
-            neighbours = neighbours_sub(self, example, context, clause_len, rng, w)
+            neighbours = neighbours_sub(self, example, context, clause_len, rng, w, conjunctive_contexts=conjunctive_contexts)
 
         return neighbours
 
@@ -134,7 +134,7 @@ class MaxSAT:
         neighbour.l[random_clause][random_literal] = int(rng.choice(values))
         return neighbour
 
-    def score(self, data, labels, contexts, inf=None):
+    def score(self, data, labels, contexts, inf=None, conjunctive_contexts=False):
         """
         Number of correctly classified examples by the model
         """
@@ -143,13 +143,13 @@ class MaxSAT:
         score = 0
         correct_examples = [0] * data.shape[0]
         for i, example in enumerate(data):
-            if self.is_correct(example, labels[i], contexts[i], inf[i]):
+            if self.is_correct(example, labels[i], contexts[i], inf[i], conjunctive_contexts=conjunctive_contexts):
                 score += 1
                 correct_examples[i] = 1
         return score, correct_examples
 
-    def is_correct(self, example, label, context=None, inf=None, optimum=-1):
-        val = get_value(self.maxSatModel(), example, context)
+    def is_correct(self, example, label, context=None, inf=None, optimum=-1, conjunctive_contexts=False):
+        val = get_value(self.maxSatModel(), example, context, conjunctive_contexts=conjunctive_contexts)
         # self.print_model()
         # print(example, context)
         if val is None:
@@ -159,7 +159,7 @@ class MaxSAT:
                 return inf
 
         if optimum == -1:
-            optimum = self.optimal_value(context)
+            optimum = self.optimal_value(context, conjunctive_contexts=conjunctive_contexts)
         if val == optimum and label:
             return True
         elif val < optimum and not label and not inf:
@@ -192,13 +192,13 @@ class MaxSAT:
             clauses.append(set(clause))
         return clauses
 
-    def optimal_value(self, context=None):
+    def optimal_value(self, context=None, conjunctive_contexts=False):
         if context is None:
             context = set()
-        sol, cost = solve_weighted_max_sat(self.n, self.maxSatModel(), context, 1)
+        sol, cost = solve_weighted_max_sat(self.n, self.maxSatModel(), context, 1, conjunctive_contexts=conjunctive_contexts)
         if not sol:
             return None
-        return get_value(self.maxSatModel(), sol, context)
+        return get_value(self.maxSatModel(), sol, context, conjunctive_contexts=conjunctive_contexts)
 
     def is_same(self, model):
         c1, w1, l1 = zip(*sorted(zip(self.c, self.w, self.l)))

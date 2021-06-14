@@ -35,8 +35,8 @@ def hc_not_sat_ex(maxsat, instance, context, rng):
     return rng.choice(lst)
 
 
-def sc_sat_ex_not_opt(model, instance, context, rng):
-    opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
+def sc_sat_ex_not_opt(model, instance, context, rng, conjunctive_contexts=0):
+    opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1, conjunctive_contexts=conjunctive_contexts)
     lst = []
     for i, (w, clause) in enumerate(model.maxSatModel()):
         ex_covered = any(
@@ -50,8 +50,8 @@ def sc_sat_ex_not_opt(model, instance, context, rng):
     return rng.choice(lst)
 
 
-def sc_sat_opt_not_ex(model, instance, context, rng):
-    opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
+def sc_sat_opt_not_ex(model, instance, context, rng, conjunctive_contexts=0):
+    opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1, conjunctive_contexts=conjunctive_contexts)
     lst = []
     for i, (w, clause) in enumerate(model.maxSatModel()):
         ex_covered = any(
@@ -65,8 +65,8 @@ def sc_sat_opt_not_ex(model, instance, context, rng):
     return rng.choice(lst)
 
 
-def sc_not_sat_any(model, instance, context, rng):
-    opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
+def sc_not_sat_any(model, instance, context, rng, conjunctive_contexts=0):
+    opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1, conjunctive_contexts=conjunctive_contexts)
     lst = []
     for i, (w, clause) in enumerate(model.maxSatModel()):
         ex_covered = any(
@@ -80,8 +80,8 @@ def sc_not_sat_any(model, instance, context, rng):
     return rng.choice(lst)
 
 
-def sc_sat_both(model, instance, context, rng):
-    opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
+def sc_sat_both(model, instance, context, rng, conjunctive_contexts=0):
+    opt, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1, conjunctive_contexts=conjunctive_contexts)
     lst = []
     for i, (w, clause) in enumerate(model.maxSatModel()):
         ex_covered = any(
@@ -183,8 +183,8 @@ def neighbours_inf(model, instance, context, clause_len, rng):
     return neighbours
 
 
-def neighbours_sub(model, instance, context, clause_len, rng, w):
-    sol, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1)
+def neighbours_sub(model, instance, context, clause_len, rng, w, conjunctive_contexts=0):
+    sol, cost = solve_weighted_max_sat(model.n, model.maxSatModel(), context, 1, conjunctive_contexts=conjunctive_contexts)
     opt_literals = instance_to_literals(sol)
     exp_literals = instance_to_literals(instance)
     neighbours = []
@@ -193,7 +193,7 @@ def neighbours_sub(model, instance, context, clause_len, rng, w):
     if index >= 0:
         neighbours.extend(remove_literal(model, index, opt_literals))
 
-    index = sc_sat_ex_not_opt(model, instance, context, rng)
+    index = sc_sat_ex_not_opt(model, instance, context, rng, conjunctive_contexts=conjunctive_contexts)
     if index >= 0:
         neighbour = model.deep_copy()
         neighbour.c[index] = 1 - neighbour.c[index]
@@ -206,7 +206,7 @@ def neighbours_sub(model, instance, context, clause_len, rng, w):
                 neighbour.w[index] = (tmp_w + 1) / 2
                 neighbours.append(neighbour)
 
-    index = sc_sat_opt_not_ex(model, instance, context, rng)
+    index = sc_sat_opt_not_ex(model, instance, context, rng, conjunctive_contexts=conjunctive_contexts)
     if index >= 0:
         neighbours.extend(remove_literal(model, index, opt_literals))
         neighbours.extend(add_literal(model, index, exp_literals, clause_len))
@@ -218,13 +218,13 @@ def neighbours_sub(model, instance, context, clause_len, rng, w):
                 neighbour.w[index] = tmp_w / 2
                 neighbours.append(neighbour)
 
-    index = sc_not_sat_any(model, instance, context, rng)
+    index = sc_not_sat_any(model, instance, context, rng, conjunctive_contexts=conjunctive_contexts)
     if index >= 0:
         neighbours.extend(
             add_literal(model, index, exp_literals - opt_literals, clause_len)
         )
 
-    index = sc_sat_both(model, instance, context, rng)
+    index = sc_sat_both(model, instance, context, rng, conjunctive_contexts=conjunctive_contexts)
     if index >= 0:
         neighbours.extend(remove_literal(model, index, opt_literals - exp_literals))
 

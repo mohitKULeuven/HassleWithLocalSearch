@@ -68,7 +68,7 @@ import random
 #     return lst_models, lst_scores, lst_correct_examples
 
 
-def eval_neighbours(neighbours, data, labels, contexts, num_neighbours, rng, inf=None):
+def eval_neighbours(neighbours, data, labels, contexts, num_neighbours, rng, inf=None, conjunctive_contexts=0):
     if not inf:
         inf = [None] * len(labels)
 
@@ -82,9 +82,9 @@ def eval_neighbours(neighbours, data, labels, contexts, num_neighbours, rng, inf
         for i, example in enumerate(data):
             key = "_".join(map(str, contexts[i]))
             if key not in optimums:
-                optimums[key] = nbr.optimal_value(contexts[i])
+                optimums[key] = nbr.optimal_value(contexts[i], conjunctive_contexts=conjunctive_contexts)
             if nbr.is_correct(
-                example, labels[i], contexts[i], inf=inf[i], optimum=optimums[key]
+                example, labels[i], contexts[i], inf=inf[i], optimum=optimums[key], conjunctive_contexts=conjunctive_contexts
             ):
                 next_correct_examples[m, i] = 1
                 scores[m] += 1
@@ -105,40 +105,40 @@ def eval_neighbours(neighbours, data, labels, contexts, num_neighbours, rng, inf
     return lst_models, lst_scores, lst_correct_examples
 
 
-def walk_sat(neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False):
+def walk_sat(neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False, conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
         next_models, scores, correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples)
         scores = [round(score_as_proportion * len(examples)) for score_as_proportion in scores]
     else:
         next_models, scores, correct_examples = eval_neighbours(
-            neighbours, data, labels, contexts, 1, rng, inf
+            neighbours, data, labels, contexts, 1, rng, inf, conjunctive_contexts=conjunctive_contexts
         )
     return next_models[0], scores[0], correct_examples[0]
 
 
-def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False):
+def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False, conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
         lst_models, lst_scores, lst_correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples)
         lst_scores = [round(score_as_proportion * len(examples)) for score_as_proportion in lst_scores]
     else:
         lst_models, lst_scores, lst_correct_examples = eval_neighbours(
-            neighbours, data, labels, contexts, 2, rng, inf
+            neighbours, data, labels, contexts, 2, rng, inf, conjunctive_contexts=conjunctive_contexts
         )
     if not lst_models[0].is_same(prev_model):
         return lst_models[0], lst_scores[0], lst_correct_examples[0]
     else:
         return lst_models[1], lst_scores[1], lst_correct_examples[1]
 
-def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False):
+def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False, conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
         lst_models, lst_scores, lst_correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples)
         lst_scores = [round(score_as_proportion * len(examples)) for score_as_proportion in lst_scores]
     else:
         lst_models, lst_scores, lst_correct_examples = eval_neighbours(
-            neighbours, data, labels, contexts, 2, rng, inf
+            neighbours, data, labels, contexts, 2, rng, inf, conjunctive_contexts=conjunctive_contexts
         )
     for i in range(len(lst_models)):
         # Return the best model that is not part of prev_models
@@ -148,12 +148,12 @@ def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None
     # If all models are part of prev_models, we might as well return the best one
     return lst_models[0], lst_scores[0], lst_correct_examples[0]
 
-def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=None, use_knowledge_compilation=False):
+def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=None, use_knowledge_compilation=False, conjunctive_contexts=0):
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
-        score, correct_examples = next_model.score(data, labels, contexts, inf)
+        score, correct_examples = next_model.score(data, labels, contexts, inf, conjunctive_contexts=conjunctive_contexts)
         return next_model, score, correct_examples
-    return novelty(prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation)
+    return novelty(prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation, conjunctive_contexts=conjunctive_contexts)
 
 
 def adaptive_novelty_plus(
@@ -168,7 +168,8 @@ def adaptive_novelty_plus(
     best_scores,
     rng,
     inf=None,
-    use_knowledge_compilation=False
+    use_knowledge_compilation=False,
+    conjunctive_contexts=0
 ):
     steps = int(len(labels) * theta)
     if len(best_scores) > steps:
@@ -178,10 +179,10 @@ def adaptive_novelty_plus(
             wp = wp - (wp * 2 * phi)
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
-        score, correct_examples = next_model.score(data, labels, contexts, inf)
+        score, correct_examples = next_model.score(data, labels, contexts, inf, conjunctive_contexts=conjunctive_contexts)
         return next_model, score, correct_examples, wp
     next_model, score, correct_examples = novelty(
-        prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation
+        prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation, conjunctive_contexts=conjunctive_contexts
     )
     return next_model, score, correct_examples, wp
 
@@ -226,7 +227,7 @@ def random_model(num_var, num_constraints, clause_len, seed) -> MaxSAT:
     return MaxSAT(c, w, l)
 
 
-def random_incorrect_example_index(model, data, contexts, labels, infeasible, rng):
+def random_incorrect_example_index(model, data, contexts, labels, infeasible, rng, conjunctive_contexts=0):
     x = list(enumerate(np.copy(data)))
     rng.shuffle(x)
     indices, data = zip(*x)
@@ -235,7 +236,7 @@ def random_incorrect_example_index(model, data, contexts, labels, infeasible, rn
     index = 0
     for i, example in enumerate(data):
         if not model.is_correct(
-            example, labels[indices[i]], contexts[indices[i]], infeasible[indices[i]]
+            example, labels[indices[i]], contexts[indices[i]], infeasible[indices[i]], conjunctive_contexts=conjunctive_contexts
         ):
             index = i
             break
@@ -259,6 +260,7 @@ def learn_weighted_max_sat(
     seed=1,
     use_knowledge_compilation=False,
     recompute_random_incorrect_examples=True,
+    conjunctive_contexts=False,
     observers=None
 ):
     """
@@ -304,7 +306,7 @@ def learn_weighted_max_sat(
         score_as_proportion, correct_examples = max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)
         score = int(score_as_proportion * len(examples))
     else:
-        score, correct_examples = model.score(data, labels, contexts, inf)
+        score, correct_examples = model.score(data, labels, contexts, inf, conjunctive_contexts=conjunctive_contexts)
     evaluation_time += time.time() - time_point
     bar.update(score * 100 / data.shape[0])
 
@@ -364,7 +366,7 @@ def learn_weighted_max_sat(
                     max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)
                 score = int(score_as_proportion * len(examples))
             else:
-                score, correct_examples = next_model.score(data, labels, contexts, inf)
+                score, correct_examples = next_model.score(data, labels, contexts, inf, conjunctive_contexts=conjunctive_contexts)
             evaluation_time += time.time() - time_point
             cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + evaluation_time
             last_update_time = cumulative_time
@@ -375,7 +377,7 @@ def learn_weighted_max_sat(
                 neighbours = model.valid_neighbours()
             else:
                 if recompute_random_incorrect_examples:
-                    index = random_incorrect_example_index(model, data, contexts, labels, inf, rng)
+                    index = random_incorrect_example_index(model, data, contexts, labels, inf, rng, conjunctive_contexts=conjunctive_contexts)
                 else:
                     index = random.choice([i for i in range(len(correct_examples)) if correct_examples[i] == 0])
 
@@ -390,6 +392,7 @@ def learn_weighted_max_sat(
                     clause_len,
                     rng,
                     infeasible[index],
+                    conjunctive_contexts=conjunctive_contexts
                 )
             computing_neighbours_time += time.time() - time_point
 
@@ -403,19 +406,19 @@ def learn_weighted_max_sat(
 
             if method == "walk_sat":
                 next_model, score, correct_examples = walk_sat(
-                    neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation
+                    neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation, conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "novelty":
                 next_model, score, correct_examples = novelty(
-                    prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation
+                    prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation, conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "novelty_large":
                 next_model, score, correct_examples = novelty_large(
-                    prev_models, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation
+                    prev_models, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation, conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "novelty_plus":
                 next_model, score, correct_examples = novelty_plus(
-                    prev_model, neighbours, data, labels, contexts, wp, rng, inf, use_knowledge_compilation
+                    prev_model, neighbours, data, labels, contexts, wp, rng, inf, use_knowledge_compilation, conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "adaptive_novelty_plus":
                 next_model, score, correct_examples, wp = adaptive_novelty_plus(
@@ -430,7 +433,8 @@ def learn_weighted_max_sat(
                     best_scores,
                     rng,
                     inf,
-                    use_knowledge_compilation
+                    use_knowledge_compilation,
+                    conjunctive_contexts
                 )
             # Computing a model update almost entirely comes down to evaluation all the model's neighbours, so
             # we include the time this update takes in the evaluation time
