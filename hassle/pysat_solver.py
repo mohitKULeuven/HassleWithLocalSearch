@@ -17,7 +17,7 @@ from .type_def import MaxSatModel, Clause, Instance, Context
 
 
 def solve_weighted_max_sat(
-    n: int, model: MaxSatModel, context: Clause, num_sol, prev_sol=[]
+    n: int, model: MaxSatModel, context: Clause, num_sol, prev_sol=[], conjunctive_contexts=False
 ):
     """
     Solves a MaxSatModel and tries to return num_sol optimal solutions
@@ -28,9 +28,15 @@ def solve_weighted_max_sat(
         #c.append(list(map(int, list(clause))), weight=w)
         if w != 0 and len(clause) > 0:
             c.append(list(map(int, list(clause))), weight=w)
+
     if len(context) > 0:
-        #c.append(list(map(int, list(context))), weight=None)
-        c.append(list(map(int, list(context))))
+        if not conjunctive_contexts:
+            #c.append(list(map(int, list(context))), weight=None)
+            c.append(list(map(int, list(context))))
+        else:
+            # Conjunctive context
+            for i in list(context):
+                c.append([int(i)])
     s = RC2(c)
     sol = []
     cst = -1
@@ -76,13 +82,17 @@ def solve_weighted_max_sat_file(
     return model
 
 
-def get_value(model: MaxSatModel, instance: Instance, context=None) -> Optional[float]:
+def get_value(model: MaxSatModel, instance: Instance, context=None, conjunctive_contexts=False) -> Optional[float]:
     """
     Returns the weighted value of an instance
     """
     model = copy.deepcopy(model)
     if context is not None and len(context) > 0:
-        model.append((None, context))
+        if not conjunctive_contexts:
+            model.append((None, context))
+        else:
+            for i in context:
+                model.append((None, {i}))
     value = 0
     for weight, clause in model:
         covered = len(clause) > 0 and any(
@@ -147,19 +157,19 @@ def label_instance_with_cache(model: MaxSatModel, instance: Instance, context: C
     return (value == best_value, best_value)
 
 
-def is_infeasible(model: MaxSatModel, instance: Instance, context: Context) -> bool:
-    value = get_value(model, instance, context)
+def is_infeasible(model: MaxSatModel, instance: Instance, context: Context, conjunctive_contexts:int=0) -> bool:
+    value = get_value(model, instance, context, conjunctive_contexts=conjunctive_contexts)
     if value is None:
         return True
     return False
 
 
-def is_suboptimal(model: MaxSatModel, instance: Instance, context: Context) -> bool:
-    value = get_value(model, instance, context)
+def is_suboptimal(model: MaxSatModel, instance: Instance, context: Context, conjunctive_contexts:int=0) -> bool:
+    value = get_value(model, instance, context, conjunctive_contexts=conjunctive_contexts)
     if value is None:
         return False
-    best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
-    best_value = get_value(model, best_instance, context)
+    best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1, conjunctive_contexts=conjunctive_contexts)
+    best_value = get_value(model, best_instance, context, conjunctive_contexts=conjunctive_contexts)
     return not value == best_value
 
 

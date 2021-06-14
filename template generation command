@@ -1,2 +1,1 @@
 python3 -m hassle.experiments.synthetic --function generate --num_vars 10 --num_hard 10 --num_soft 10 --model_seeds 1 --num_context 100 --context_seeds 1 --num_pos 2 --num_neg 2 --neg_type both --method walk_sat --cutoff 15 --noise 0
-
