@@ -108,7 +108,7 @@ def eval_neighbours(neighbours, data, labels, contexts, num_neighbours, rng, inf
 def walk_sat(neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False, conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
-        next_models, scores, correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples)
+        next_models, scores, correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples, conjunctive_contexts=conjunctive_contexts)
         scores = [round(score_as_proportion * len(examples)) for score_as_proportion in scores]
     else:
         next_models, scores, correct_examples = eval_neighbours(
@@ -120,7 +120,7 @@ def walk_sat(neighbours, data, labels, contexts, rng, inf=None, use_knowledge_co
 def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False, conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
-        lst_models, lst_scores, lst_correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples)
+        lst_models, lst_scores, lst_correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples, conjunctive_contexts=conjunctive_contexts)
         lst_scores = [round(score_as_proportion * len(examples)) for score_as_proportion in lst_scores]
     else:
         lst_models, lst_scores, lst_correct_examples = eval_neighbours(
@@ -134,7 +134,7 @@ def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None, use_k
 def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False, conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
-        lst_models, lst_scores, lst_correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples)
+        lst_models, lst_scores, lst_correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples, conjunctive_contexts=conjunctive_contexts)
         lst_scores = [round(score_as_proportion * len(examples)) for score_as_proportion in lst_scores]
     else:
         lst_models, lst_scores, lst_correct_examples = eval_neighbours(
@@ -303,7 +303,7 @@ def learn_weighted_max_sat(
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
         model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
-        score_as_proportion, correct_examples = max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)
+        score_as_proportion, correct_examples = max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples, conjunctive_contexts=conjunctive_contexts)
         score = int(score_as_proportion * len(examples))
     else:
         score, correct_examples = model.score(data, labels, contexts, inf, conjunctive_contexts=conjunctive_contexts)
@@ -363,7 +363,7 @@ def learn_weighted_max_sat(
             if use_knowledge_compilation:
                 model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
                 score_as_proportion, correct_examples =\
-                    max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples)
+                    max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples, conjunctive_contexts=conjunctive_contexts)
                 score = int(score_as_proportion * len(examples))
             else:
                 score, correct_examples = next_model.score(data, labels, contexts, inf, conjunctive_contexts=conjunctive_contexts)

@@ -137,10 +137,10 @@ def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> 
 
 
 def label_instance_with_cache(model: MaxSatModel, instance: Instance, context: Context,
-                              cached_best_value=None, value_of_instance=-1):
+                              cached_best_value=None, value_of_instance=-1, conjunctive_contexts=0):
 
     if value_of_instance is -1:
-        value = get_value(model, instance, context)
+        value = get_value(model, instance, context, conjunctive_contexts=conjunctive_contexts)
     else:
         value = value_of_instance
 
@@ -150,10 +150,10 @@ def label_instance_with_cache(model: MaxSatModel, instance: Instance, context: C
     if cached_best_value is not None:
         best_value = cached_best_value
     else:
-        best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
+        best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1, conjunctive_contexts=conjunctive_contexts)
         if cst < 0:
             return (False, None)
-        best_value = get_value(model, best_instance, context)
+        best_value = get_value(model, best_instance, context, conjunctive_contexts=conjunctive_contexts)
     return (value == best_value, best_value)
 
 
