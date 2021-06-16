@@ -304,7 +304,7 @@ def learn_weighted_max_sat(
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
         model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
         score_as_proportion, correct_examples = max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples, conjunctive_contexts=conjunctive_contexts)
-        score = int(score_as_proportion * len(examples))
+        score = int(round(score_as_proportion * len(examples)))
     else:
         score, correct_examples = model.score(data, labels, contexts, inf, conjunctive_contexts=conjunctive_contexts)
     evaluation_time += time.time() - time_point
@@ -364,7 +364,7 @@ def learn_weighted_max_sat(
                 model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
                 score_as_proportion, correct_examples =\
                     max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples, conjunctive_contexts=conjunctive_contexts)
-                score = int(score_as_proportion * len(examples))
+                score = int(round(score_as_proportion * len(examples)))
             else:
                 score, correct_examples = next_model.score(data, labels, contexts, inf, conjunctive_contexts=conjunctive_contexts)
             evaluation_time += time.time() - time_point
