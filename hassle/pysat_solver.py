@@ -139,7 +139,7 @@ def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> 
 def label_instance_with_cache(model: MaxSatModel, instance: Instance, context: Context,
                               cached_best_value=None, value_of_instance=-1, conjunctive_contexts=0):
 
-    if value_of_instance is -1:
+    if value_of_instance == -1:
         value = get_value(model, instance, context, conjunctive_contexts=conjunctive_contexts)
     else:
         value = value_of_instance
@@ -147,9 +147,17 @@ def label_instance_with_cache(model: MaxSatModel, instance: Instance, context: C
     if value is None:
         return (False, None)
 
-    if cached_best_value is not None:
+    if cached_best_value is not None and cached_best_value != 0:
+        # Do not use cached_best_value when it is equal to 0, because the cached_best_value---when provided---results
+        # from inference on a algebraic decision diagram, in which no distinction can be made between an infeasible
+        # instance and a feasible instance which satisfies 0 weight in soft constraints. This can lead to a bug in
+        # evaluation, because depending on whether the model is simply infeasible or its optimal value is 0, a different
+        # label might have to be given for an instance with value 0
         best_value = cached_best_value
     else:
+        if cached_best_value == 0 and value_of_instance != -1:
+            # Do not rely on algebraic_decision_diagram when cached_best_value is 0, for the reasoning given above
+            value = get_value(model, instance, context, conjunctive_contexts=conjunctive_contexts)
         best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1, conjunctive_contexts=conjunctive_contexts)
         if cst < 0:
             return (False, None)

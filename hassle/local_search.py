@@ -15,7 +15,7 @@ import copy
 import os
 import pickle
 from tqdm import tqdm
-import max_sat
+#import max_sat
 import random
 
 
