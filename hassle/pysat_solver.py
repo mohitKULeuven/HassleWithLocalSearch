@@ -162,7 +162,7 @@ def label_instance_with_cache(model: MaxSatModel, instance: Instance, context: C
         if cst < 0:
             return (False, None)
         best_value = get_value(model, best_instance, context, conjunctive_contexts=conjunctive_contexts)
-    return (value == best_value, best_value)
+    return (round(value, 10) == round(best_value, 10), best_value)
 
 
 def is_infeasible(model: MaxSatModel, instance: Instance, context: Context, conjunctive_contexts:int=0) -> bool:
