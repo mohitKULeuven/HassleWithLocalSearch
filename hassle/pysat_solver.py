@@ -158,6 +158,8 @@ def label_instance_with_cache(model: MaxSatModel, instance: Instance, context: C
         if cached_best_value == 0 and value_of_instance != -1:
             # Do not rely on algebraic_decision_diagram when cached_best_value is 0, for the reasoning given above
             value = get_value(model, instance, context, conjunctive_contexts=conjunctive_contexts)
+            if value is None:
+                return (False, None)
         best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1, conjunctive_contexts=conjunctive_contexts)
         if cst < 0:
             return (False, None)

@@ -15,7 +15,7 @@ import copy
 import os
 import pickle
 from tqdm import tqdm
-#import max_sat
+import max_sat
 import random
 
 
@@ -206,8 +206,7 @@ def ternary(n, length):
             return ternary(e, length - 1) + [q]
 
 
-def random_model(num_var, num_constraints, clause_len, seed) -> MaxSAT:
-    rng = np.random.RandomState(seed)
+def random_model(num_var, num_constraints, clause_len, rng, variable_absence_bias=1) -> MaxSAT:
     c = [rng.randint(0, 2) for i in range(num_constraints)]
     w = [float("%.3f" % (rng.uniform(0.001, 0.999))) for i in range(num_constraints)]
     l = []
@@ -217,7 +216,7 @@ def random_model(num_var, num_constraints, clause_len, seed) -> MaxSAT:
         sample = rng.choice(num_var, clause_len, replace=False)
         for j in range(num_var):
             if j in sample:
-                clause.append(int(rng.choice([-1, 0, 1])))
+                clause.append(int(rng.choice([-1, 0, 1], p=[0.5/(1+variable_absence_bias), variable_absence_bias/(1+variable_absence_bias), 0.5/(1+variable_absence_bias)])))
             else:
                 clause.append(0)
 
@@ -261,6 +260,8 @@ def learn_weighted_max_sat(
     use_knowledge_compilation=False,
     recompute_random_incorrect_examples=True,
     conjunctive_contexts=False,
+    initialization_attempts=1,
+    variable_absence_bias=1,
     observers=None
 ):
     """
@@ -285,36 +286,44 @@ def learn_weighted_max_sat(
     if not os.path.exists("pickles/learned_model"):
         os.makedirs("pickles/learned_model")
 
+    rng = np.random.RandomState(seed)
+
     # Initialising timers
-    initialisation_time = 0
     random_restart_time = 0
     computing_neighbours_time = 0
     evaluation_time = 0
     cumulative_time = 0
 
-    # Starting with a random model
+    # Initialization
     time_point = time.time()
-    model = random_model(data.shape[1], num_constraints, clause_len, seed)
-    initialisation_time += time.time() - time_point
-
-    # Evaluating the initial model
+    model = None
+    score = 0
     bar = tqdm("Score", total=100)
-    time_point = time.time()
-    if use_knowledge_compilation:
-        examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
-        model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
-        score_as_proportion, correct_examples = max_sat.evaluate_knowledge_compilation_based(model_as_phenotype, examples, conjunctive_contexts=conjunctive_contexts)
-        score = int(round(score_as_proportion * len(examples)))
-    else:
-        score, correct_examples = model.score(data, labels, contexts, inf, conjunctive_contexts=conjunctive_contexts)
+    for i in range(initialization_attempts):
+        new_model = random_model(data.shape[1], num_constraints, clause_len, rng, variable_absence_bias=variable_absence_bias)
+        if use_knowledge_compilation:
+            examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
+            model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(new_model))
+            new_score_as_proportion, new_correct_examples = max_sat.evaluate_knowledge_compilation_based(model_as_phenotype,
+                                                                                                 examples,
+                                                                                                 conjunctive_contexts=conjunctive_contexts)
+            new_score = int(round(new_score_as_proportion * len(examples)))
+        else:
+            new_score, new_correct_examples = new_model.score(data, labels, contexts, inf,
+                                                  conjunctive_contexts=conjunctive_contexts)
+        if new_score > score:
+            model = new_model
+            score = new_score
+            correct_examples = new_correct_examples
+
     evaluation_time += time.time() - time_point
     bar.update(score * 100 / data.shape[0])
 
+
     # Update cumulative time
-    cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + evaluation_time
+    cumulative_time = random_restart_time + computing_neighbours_time + evaluation_time
     
     # Some setup
-    rng = np.random.RandomState(seed)
     prev_model = model
     prev_models = [model]
     solutions = [model.deep_copy().maxSatModel()]
@@ -332,7 +341,6 @@ def learn_weighted_max_sat(
             current_score=score/data.shape[0],
             number_of_neighbours=0,
             cumulative_time=cumulative_time,
-            initialisation_time=initialisation_time,
             random_restart_time=random_restart_time,
             computing_neighbours_time=computing_neighbours_time,
             evaluation_time=evaluation_time,
@@ -356,7 +364,7 @@ def learn_weighted_max_sat(
             # Random restart
             random_restart_count += 1
             time_point = time.time()
-            next_model = random_model(data.shape[1], num_constraints, clause_len, seed)
+            next_model = random_model(data.shape[1], num_constraints, clause_len, rng, variable_absence_bias=variable_absence_bias)
             random_restart_time += time.time() - time_point
 
             time_point = time.time()
@@ -368,7 +376,7 @@ def learn_weighted_max_sat(
             else:
                 score, correct_examples = next_model.score(data, labels, contexts, inf, conjunctive_contexts=conjunctive_contexts)
             evaluation_time += time.time() - time_point
-            cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + evaluation_time
+            cumulative_time = random_restart_time + computing_neighbours_time + evaluation_time
             last_update_time = cumulative_time
         else:
             # Compute neighbourhood
@@ -397,7 +405,7 @@ def learn_weighted_max_sat(
             computing_neighbours_time += time.time() - time_point
 
             if len(neighbours) == 0 or (method != "walk_sat" and len(neighbours) < 2):
-                cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + evaluation_time
+                cumulative_time = random_restart_time + computing_neighbours_time + evaluation_time
                 continue
             nbr += len(neighbours)
 
@@ -453,7 +461,7 @@ def learn_weighted_max_sat(
 
         # Update cumulative time
         old_cumulative_time = cumulative_time
-        cumulative_time = initialisation_time + random_restart_time + computing_neighbours_time + evaluation_time
+        cumulative_time = random_restart_time + computing_neighbours_time + evaluation_time
         
         if score > best_scores[-1]:
             # Found a new best model
@@ -475,7 +483,6 @@ def learn_weighted_max_sat(
                 current_score=score/data.shape[0],
                 number_of_neighbours=len(neighbours),
                 cumulative_time=cumulative_time,
-                initialisation_time=initialisation_time,
                 random_restart_time=random_restart_time,
                 computing_neighbours_time=computing_neighbours_time,
                 evaluation_time=evaluation_time,
@@ -502,7 +509,6 @@ def learn_weighted_max_sat(
     pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
     print(f"Iterations: {itr}")
     print(f"Timing:\n"
-          f"Initialisation: {initialisation_time}\n"
           f"Random restarts: {random_restart_time}\n"
           f"Computing neighbours: {computing_neighbours_time}\n"
           f"Evaluation: {evaluation_time}\n"
