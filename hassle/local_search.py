@@ -144,9 +144,9 @@ def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None
         # Return the best model that is not part of prev_models
         next_best_model = lst_models[i]
         if not any([next_best_model.is_same(a_model) for a_model in prev_models]):
-            return next_best_model, lst_scores[i], lst_correct_examples[i]
+            return next_best_model, lst_scores[i], lst_correct_examples[i], i
     # If all models are part of prev_models, we might as well return the best one
-    return lst_models[0], lst_scores[0], lst_correct_examples[0]
+    return lst_models[0], lst_scores[0], lst_correct_examples[0], len(lst_models)
 
 def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=None, use_knowledge_compilation=False, conjunctive_contexts=0):
     if rng.random_sample() < wp:
@@ -255,11 +255,13 @@ def learn_weighted_max_sat(
     wp=0.1,
     theta=0.17,
     phi=0.2,
+    window_size=100,
     cutoff_time=5,
     seed=1,
     use_knowledge_compilation=False,
     recompute_random_incorrect_examples=True,
     conjunctive_contexts=False,
+    perform_random_restarts=True,
     initialization_attempts=1,
     variable_absence_bias=1,
     observers=None
@@ -331,6 +333,7 @@ def learn_weighted_max_sat(
     best_model_correct_examples = [correct_examples]
     time_taken = [cumulative_time]
     random_restart_count = 0
+    total_window_hits = 0
     for observer in observers:
         observer.observe_generation(
             gen_count=0,
@@ -340,6 +343,7 @@ def learn_weighted_max_sat(
             best_model_correct_examples=best_model_correct_examples[-1],
             current_score=score/data.shape[0],
             number_of_neighbours=0,
+            number_of_window_hits=total_window_hits,
             cumulative_time=cumulative_time,
             random_restart_time=random_restart_time,
             computing_neighbours_time=computing_neighbours_time,
@@ -350,6 +354,7 @@ def learn_weighted_max_sat(
     itr = 0
     num_neighbours = [0]
     nbr = 0
+
     num_example = data.shape[0]
     last_update_time = cumulative_time
 
@@ -358,7 +363,7 @@ def learn_weighted_max_sat(
         #and
         cumulative_time < cutoff_time
     ):
-        if cumulative_time - last_update_time > cutoff_time / 4:
+        if perform_random_restarts and cumulative_time - last_update_time > cutoff_time / 4:
             # if rng.random_sample() < p:
 
             # Random restart
@@ -421,9 +426,10 @@ def learn_weighted_max_sat(
                     prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation, conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "novelty_large":
-                next_model, score, correct_examples = novelty_large(
+                next_model, score, correct_examples, window_hits = novelty_large(
                     prev_models, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation, conjunctive_contexts=conjunctive_contexts
                 )
+                total_window_hits += window_hits
             elif method == "novelty_plus":
                 next_model, score, correct_examples = novelty_plus(
                     prev_model, neighbours, data, labels, contexts, wp, rng, inf, use_knowledge_compilation, conjunctive_contexts=conjunctive_contexts
@@ -451,7 +457,6 @@ def learn_weighted_max_sat(
         prev_model = model
         if method == "novelty_large":
             # Only have to keep track of multiple previous models when we are using novelty_large
-            window_size = 150
             if len(prev_models) < window_size:
                 prev_models.append(model)
             else:
@@ -482,6 +487,7 @@ def learn_weighted_max_sat(
                 best_model_correct_examples=best_model_correct_examples[-1],
                 current_score=score/data.shape[0],
                 number_of_neighbours=len(neighbours),
+                number_of_window_hits=total_window_hits,
                 cumulative_time=cumulative_time,
                 random_restart_time=random_restart_time,
                 computing_neighbours_time=computing_neighbours_time,
@@ -513,5 +519,7 @@ def learn_weighted_max_sat(
           f"Computing neighbours: {computing_neighbours_time}\n"
           f"Evaluation: {evaluation_time}\n"
           f"Total: {cumulative_time}\n")
+    if method == "novelty_large":
+        print(f"Number of window hits: {total_window_hits}")
     return solutions[-1]
     # return (solutions, best_scores, time_taken, iterations, num_neighbours)
