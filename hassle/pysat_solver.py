@@ -145,7 +145,7 @@ def label_instance_with_cache(model: MaxSatModel, instance: Instance, context: C
         value = value_of_instance
 
     if value is None:
-        return (False, None)
+        return (-1, None)
 
     if cached_best_value is not None and cached_best_value != 0:
         # Do not use cached_best_value when it is equal to 0, because the cached_best_value---when provided---results
@@ -159,12 +159,15 @@ def label_instance_with_cache(model: MaxSatModel, instance: Instance, context: C
             # Do not rely on algebraic_decision_diagram when cached_best_value is 0, for the reasoning given above
             value = get_value(model, instance, context, conjunctive_contexts=conjunctive_contexts)
             if value is None:
-                return (False, None)
+                return (-1, None)
         best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1, conjunctive_contexts=conjunctive_contexts)
         if cst < 0:
-            return (False, None)
+            return (-1, None)
         best_value = get_value(model, best_instance, context, conjunctive_contexts=conjunctive_contexts)
-    return (round(value, 10) == round(best_value, 10), best_value)
+    if round(value, 10) == round(best_value, 10):
+        return (1, best_value)
+    else:
+        return (0, best_value)
 
 
 def is_infeasible(model: MaxSatModel, instance: Instance, context: Context, conjunctive_contexts:int=0) -> bool:
