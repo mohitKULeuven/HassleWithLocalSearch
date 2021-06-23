@@ -285,6 +285,7 @@ def learn_weighted_max_sat(
         perform_random_restarts=True,
         initialization_attempts=1,
         variable_absence_bias=1,
+        neighbourhood_limit=None,
         observers=None
 ):
     """
@@ -429,7 +430,8 @@ def learn_weighted_max_sat(
                     clause_len,
                     rng,
                     infeasible[index],
-                    conjunctive_contexts=conjunctive_contexts
+                    conjunctive_contexts=conjunctive_contexts,
+                    neighbourhood_limit=neighbourhood_limit
                 )
             computing_neighbours_time += time.time() - time_point
 

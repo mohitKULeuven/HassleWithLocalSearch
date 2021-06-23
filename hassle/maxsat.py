@@ -48,7 +48,7 @@ class MaxSAT:
         self.n = n
 
     def get_neighbours(
-        self, example, context, label, clause_len, rng, infeasible=None, w=1, conjunctive_contexts=0
+        self, example, context, label, clause_len, rng, infeasible=None, w=1, conjunctive_contexts=0, neighbourhood_limit=None
     ):
         # val = get_value(self.maxSatModel(), picked_example, contexts[indices[index]])
         if not label:
@@ -63,7 +63,12 @@ class MaxSAT:
         else:
             neighbours = neighbours_sub(self, example, context, clause_len, rng, w, conjunctive_contexts=conjunctive_contexts)
 
-        return neighbours
+        if neighbourhood_limit is None or len(neighbours) < neighbourhood_limit:
+            return neighbours
+        else:
+            # Only return as many neighbours as the neighbourhood limit dictates, randomly selected
+            return rng.choice(neighbours, neighbourhood_limit)
+
 
     # def get_neighbours(self, data, labels, contexts, rng, w):
     #     x = list(enumerate(data))
