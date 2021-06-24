@@ -15,7 +15,8 @@ import copy
 import os
 import pickle
 from tqdm import tqdm
-import max_sat
+import auxiliary
+import evaluation
 import random
 
 
@@ -110,7 +111,7 @@ def walk_sat(neighbours, data, labels, contexts, rng, inf=None, use_knowledge_co
              conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
-        next_models, scores, correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours, examples,
+        next_models, scores, correct_examples = auxiliary.rank_neigbours_knowledge_compilation(neighbours, examples,
                                                                                              conjunctive_contexts=conjunctive_contexts, inf=inf)
         scores = [round(score_as_proportion * len(examples)) for score_as_proportion in scores]
     else:
@@ -124,7 +125,7 @@ def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None, use_k
             conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
-        lst_models, lst_scores, lst_correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours,
+        lst_models, lst_scores, lst_correct_examples = auxiliary.rank_neigbours_knowledge_compilation(neighbours,
                                                                                                     examples,
                                                                                                     conjunctive_contexts=conjunctive_contexts,
                                                                                                     inf=inf)
@@ -143,7 +144,7 @@ def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None
                   conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
-        lst_models, lst_scores, lst_correct_examples = max_sat.rank_neigbours_knowledge_compilation(neighbours,
+        lst_models, lst_scores, lst_correct_examples = auxiliary.rank_neigbours_knowledge_compilation(neighbours,
                                                                                                     examples,
                                                                                                     conjunctive_contexts=conjunctive_contexts,
                                                                                                     inf=inf)
@@ -328,8 +329,8 @@ def learn_weighted_max_sat(
                                  variable_absence_bias=variable_absence_bias)
         if use_knowledge_compilation:
             examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
-            model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(new_model))
-            new_score_as_proportion, new_correct_examples = max_sat.evaluate_knowledge_compilation_based_dispatch(
+            model_as_phenotype = auxiliary.to_phenotype(auxiliary.MaxSAT_to_genotype(new_model))
+            new_score_as_proportion, new_correct_examples = evaluation.evaluate_knowledge_compilation_based_dispatch(
                 model_as_phenotype, examples, conjunctive_contexts=conjunctive_contexts, inf=inf)
             new_score = int(round(new_score_as_proportion * len(examples)))
         else:
@@ -396,9 +397,9 @@ def learn_weighted_max_sat(
 
             time_point = time.time()
             if use_knowledge_compilation:
-                model_as_phenotype = max_sat.to_phenotype(max_sat.MaxSAT_to_genotype(model))
+                model_as_phenotype = auxiliary.to_phenotype(auxiliary.MaxSAT_to_genotype(model))
                 score_as_proportion, correct_examples = \
-                    max_sat.evaluate_knowledge_compilation_based_dispatch(model_as_phenotype, examples,
+                    evaluation.evaluate_knowledge_compilation_based_dispatch(model_as_phenotype, examples,
                                                                  conjunctive_contexts=conjunctive_contexts, inf=inf)
                 score = int(round(score_as_proportion * len(examples)))
             else:
