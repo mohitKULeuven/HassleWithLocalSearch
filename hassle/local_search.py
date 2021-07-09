@@ -470,22 +470,30 @@ def learn_weighted_max_sat(
             if method == "walk_sat":
                 next_model, score, correct_examples = walk_sat(
                     neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation,
+                    knowledge_compilation_variant=knowledge_compilation_variant,
+                    use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                     conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "novelty":
                 next_model, score, correct_examples = novelty(
                     prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation,
+                    knowledge_compilation_variant=knowledge_compilation_variant,
+                    use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                     conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "novelty_large":
                 next_model, score, correct_examples, window_hits = novelty_large(
                     prev_models, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation,
+                    knowledge_compilation_variant=knowledge_compilation_variant,
+                    use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                     conjunctive_contexts=conjunctive_contexts
                 )
                 total_window_hits += window_hits
             elif method == "novelty_plus":
                 next_model, score, correct_examples = novelty_plus(
                     prev_model, neighbours, data, labels, contexts, wp, rng, inf, use_knowledge_compilation,
+                    knowledge_compilation_variant=knowledge_compilation_variant,
+                    use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                     conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "adaptive_novelty_plus":
@@ -502,7 +510,9 @@ def learn_weighted_max_sat(
                     rng,
                     inf,
                     use_knowledge_compilation,
-                    conjunctive_contexts
+                    knowledge_compilation_variant=knowledge_compilation_variant,
+                    use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
+                    conjunctive_contexts=conjunctive_contexts
                 )
             # Computing a model update almost entirely comes down to evaluation all the model's neighbours, so
             # we include the time this update takes in the evaluation time
