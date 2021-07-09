@@ -108,11 +108,15 @@ def eval_neighbours(neighbours, data, labels, contexts, num_neighbours, rng, inf
 
 
 def walk_sat(neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False,
+             knowledge_compilation_variant=4, use_diagram_for_instance_evaluation=True,
              conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
         next_models, scores, correct_examples = auxiliary.rank_neigbours_knowledge_compilation(neighbours, examples,
-                                                                                             conjunctive_contexts=conjunctive_contexts, inf=inf)
+                                                                                               knowledge_compilation_variant=knowledge_compilation_variant,
+                                                                                               use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
+                                                                                               conjunctive_contexts=conjunctive_contexts,
+                                                                                               inf=inf)
         scores = [round(score_as_proportion * len(examples)) for score_as_proportion in scores]
     else:
         next_models, scores, correct_examples = eval_neighbours(
@@ -122,11 +126,14 @@ def walk_sat(neighbours, data, labels, contexts, rng, inf=None, use_knowledge_co
 
 
 def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False,
+            knowledge_compilation_variant=4, use_diagram_for_instance_evaluation=True,
             conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
         lst_models, lst_scores, lst_correct_examples = auxiliary.rank_neigbours_knowledge_compilation(neighbours,
                                                                                                     examples,
+                                                                                                    knowledge_compilation_variant=knowledge_compilation_variant,
+                                                                                                    use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                                                                                                     conjunctive_contexts=conjunctive_contexts,
                                                                                                     inf=inf)
         lst_scores = [round(score_as_proportion * len(examples)) for score_as_proportion in lst_scores]
@@ -141,11 +148,14 @@ def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None, use_k
 
 
 def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False,
+                  knowledge_compilation_variant=4, use_diagram_for_instance_evaluation=True,
                   conjunctive_contexts=0):
     if use_knowledge_compilation:
         examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
         lst_models, lst_scores, lst_correct_examples = auxiliary.rank_neigbours_knowledge_compilation(neighbours,
                                                                                                     examples,
+                                                                                                    knowledge_compilation_variant=knowledge_compilation_variant,
+                                                                                                    use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                                                                                                     conjunctive_contexts=conjunctive_contexts,
                                                                                                     inf=inf)
         lst_scores = [round(score_as_proportion * len(examples)) for score_as_proportion in lst_scores]
@@ -163,6 +173,7 @@ def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None
 
 
 def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=None, use_knowledge_compilation=False,
+                 knowledge_compilation_variant=4, use_diagram_for_instance_evaluation=True,
                  conjunctive_contexts=0):
     if rng.random_sample() < wp:
         next_model = neighbours[rng.randint(0, len(neighbours))]
@@ -170,6 +181,8 @@ def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=No
                                                    conjunctive_contexts=conjunctive_contexts)
         return next_model, score, correct_examples
     return novelty(prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation,
+                   knowledge_compilation_variant=knowledge_compilation_variant,
+                   use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                    conjunctive_contexts=conjunctive_contexts)
 
 
@@ -186,6 +199,8 @@ def adaptive_novelty_plus(
         rng,
         inf=None,
         use_knowledge_compilation=False,
+        knowledge_compilation_variant=4,
+        use_diagram_for_instance_evaluation=True,
         conjunctive_contexts=0
 ):
     steps = int(len(labels) * theta)
@@ -201,6 +216,8 @@ def adaptive_novelty_plus(
         return next_model, score, correct_examples, wp
     next_model, score, correct_examples = novelty(
         prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation,
+        knowledge_compilation_variant=knowledge_compilation_variant,
+        use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
         conjunctive_contexts=conjunctive_contexts
     )
     return next_model, score, correct_examples, wp
@@ -281,6 +298,8 @@ def learn_weighted_max_sat(
         cutoff_time=5,
         seed=1,
         use_knowledge_compilation=False,
+        knowledge_compilation_variant=4,
+        use_diagram_for_instance_evaluation=True,
         recompute_random_incorrect_examples=True,
         conjunctive_contexts=False,
         perform_random_restarts=True,
@@ -331,7 +350,9 @@ def learn_weighted_max_sat(
             examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
             model_as_phenotype = auxiliary.to_phenotype(auxiliary.MaxSAT_to_genotype(new_model))
             new_score_as_proportion, new_correct_examples = evaluation.evaluate_knowledge_compilation_based_dispatch(
-                model_as_phenotype, examples, conjunctive_contexts=conjunctive_contexts, inf=inf)
+                model_as_phenotype, examples, knowledge_compilation_variant=knowledge_compilation_variant,
+                use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
+                conjunctive_contexts=conjunctive_contexts, inf=inf)
             new_score = int(round(new_score_as_proportion * len(examples)))
         else:
             new_score, new_correct_examples = new_model.score(data, labels, contexts, inf,
@@ -400,6 +421,8 @@ def learn_weighted_max_sat(
                 model_as_phenotype = auxiliary.to_phenotype(auxiliary.MaxSAT_to_genotype(model))
                 score_as_proportion, correct_examples = \
                     evaluation.evaluate_knowledge_compilation_based_dispatch(model_as_phenotype, examples,
+                                                                             knowledge_compilation_variant=knowledge_compilation_variant,
+                                                                             use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                                                                  conjunctive_contexts=conjunctive_contexts, inf=inf)
                 score = int(round(score_as_proportion * len(examples)))
             else:
