@@ -441,7 +441,11 @@ def learn_weighted_max_sat(
                     index = random_incorrect_example_index(model, data, contexts, labels, inf, rng,
                                                            conjunctive_contexts=conjunctive_contexts)
                 else:
-                    index = random.choice([i for i in range(len(correct_examples)) if correct_examples[i] == 0])
+                    incorrect_examples = [i for i in range(len(correct_examples)) if correct_examples[i] == 0]
+                    if incorrect_examples:
+                        index = random.choice(incorrect_examples)
+                    else:
+                        index = random.choice([i for i in range(len(correct_examples))])
 
                 if inf:
                     infeasible = inf
