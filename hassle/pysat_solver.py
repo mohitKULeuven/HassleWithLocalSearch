@@ -95,9 +95,12 @@ def get_value(model: MaxSatModel, instance: Instance, context=None, conjunctive_
                 model.append((None, {i}))
     value = 0
     for weight, clause in model:
-        covered = len(clause) > 0 and any(
-            not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
-        )
+        try:
+            covered = len(clause) > 0 and any(not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause)
+        except:
+            print(f"Instance is: {instance}")
+            print(f"Clause is: {clause}")
+            raise Exception("Error")
         if weight is None:
             if not covered:
                 return None
