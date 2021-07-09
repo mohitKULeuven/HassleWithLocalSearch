@@ -122,7 +122,7 @@ def walk_sat(neighbours, data, labels, contexts, rng, inf=None, use_knowledge_co
         next_models, scores, correct_examples = eval_neighbours(
             neighbours, data, labels, contexts, 1, rng, inf, conjunctive_contexts=conjunctive_contexts
         )
-    return next_models[0], scores[0], correct_examples[0]
+    return next_models[0], scores[0], correct_examples[0], len(neighbours)
 
 
 def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False,
@@ -142,9 +142,9 @@ def novelty(prev_model, neighbours, data, labels, contexts, rng, inf=None, use_k
             neighbours, data, labels, contexts, 2, rng, inf, conjunctive_contexts=conjunctive_contexts
         )
     if not lst_models[0].is_same(prev_model):
-        return lst_models[0], lst_scores[0], lst_correct_examples[0]
+        return lst_models[0], lst_scores[0], lst_correct_examples[0], len(neighbours)
     else:
-        return lst_models[1], lst_scores[1], lst_correct_examples[1]
+        return lst_models[1], lst_scores[1], lst_correct_examples[1], len(neighbours)
 
 
 def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None, use_knowledge_compilation=False,
@@ -169,7 +169,7 @@ def novelty_large(prev_models, neighbours, data, labels, contexts, rng, inf=None
         if not any([next_best_model.is_same(a_model) for a_model in prev_models]):
             return next_best_model, lst_scores[i], lst_correct_examples[i], i
     # If all models are part of prev_models, we might as well return the best one
-    return lst_models[0], lst_scores[0], lst_correct_examples[0], len(lst_models)
+    return lst_models[0], lst_scores[0], lst_correct_examples[0], len(neighbours), len(lst_models)
 
 
 def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=None, use_knowledge_compilation=False,
@@ -179,7 +179,7 @@ def novelty_plus(prev_model, neighbours, data, labels, contexts, wp, rng, inf=No
         next_model = neighbours[rng.randint(0, len(neighbours))]
         score, correct_examples = next_model.score(data, labels, contexts, inf,
                                                    conjunctive_contexts=conjunctive_contexts)
-        return next_model, score, correct_examples
+        return next_model, score, correct_examples, 1
     return novelty(prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation,
                    knowledge_compilation_variant=knowledge_compilation_variant,
                    use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
@@ -214,13 +214,13 @@ def adaptive_novelty_plus(
         score, correct_examples = next_model.score(data, labels, contexts, inf,
                                                    conjunctive_contexts=conjunctive_contexts)
         return next_model, score, correct_examples, wp
-    next_model, score, correct_examples = novelty(
+    next_model, score, correct_examples, evaluations_done = novelty(
         prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation,
         knowledge_compilation_variant=knowledge_compilation_variant,
         use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
         conjunctive_contexts=conjunctive_contexts
     )
-    return next_model, score, correct_examples, wp
+    return next_model, score, correct_examples, evaluations_done, wp
 
 
 def ternary(n, length):
@@ -342,6 +342,7 @@ def learn_weighted_max_sat(
     time_point = time.time()
     model = None
     score = 0
+    number_of_evaluations = 0
     bar = tqdm("Score", total=100)
     for i in range(initialization_attempts):
         new_model = random_model(data.shape[1], num_constraints, clause_len, rng,
@@ -361,6 +362,7 @@ def learn_weighted_max_sat(
             model = new_model
             score = new_score
             correct_examples = new_correct_examples
+    number_of_evaluations += initialization_attempts
 
     evaluation_time += time.time() - time_point
     bar.update(score * 100 / data.shape[0])
@@ -387,6 +389,7 @@ def learn_weighted_max_sat(
             current_score=score / data.shape[0],
             number_of_neighbours=0,
             number_of_window_hits=total_window_hits,
+            number_of_evaluations=number_of_evaluations,
             cumulative_time=cumulative_time,
             random_restart_time=random_restart_time,
             computing_neighbours_time=computing_neighbours_time,
@@ -428,6 +431,7 @@ def learn_weighted_max_sat(
             else:
                 score, correct_examples = next_model.score(data, labels, contexts, inf,
                                                            conjunctive_contexts=conjunctive_contexts)
+            number_of_evaluations += 1
             evaluation_time += time.time() - time_point
             cumulative_time = random_restart_time + computing_neighbours_time + evaluation_time
             last_update_time = cumulative_time
@@ -472,21 +476,21 @@ def learn_weighted_max_sat(
             time_point = time.time()
 
             if method == "walk_sat":
-                next_model, score, correct_examples = walk_sat(
+                next_model, score, correct_examples, evaluations_done = walk_sat(
                     neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation,
                     knowledge_compilation_variant=knowledge_compilation_variant,
                     use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                     conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "novelty":
-                next_model, score, correct_examples = novelty(
+                next_model, score, correct_examples, evaluations_done = novelty(
                     prev_model, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation,
                     knowledge_compilation_variant=knowledge_compilation_variant,
                     use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                     conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "novelty_large":
-                next_model, score, correct_examples, window_hits = novelty_large(
+                next_model, score, correct_examples, evaluations_done, window_hits = novelty_large(
                     prev_models, neighbours, data, labels, contexts, rng, inf, use_knowledge_compilation,
                     knowledge_compilation_variant=knowledge_compilation_variant,
                     use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
@@ -494,14 +498,14 @@ def learn_weighted_max_sat(
                 )
                 total_window_hits += window_hits
             elif method == "novelty_plus":
-                next_model, score, correct_examples = novelty_plus(
+                next_model, score, correct_examples, evaluations_done = novelty_plus(
                     prev_model, neighbours, data, labels, contexts, wp, rng, inf, use_knowledge_compilation,
                     knowledge_compilation_variant=knowledge_compilation_variant,
                     use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
                     conjunctive_contexts=conjunctive_contexts
                 )
             elif method == "adaptive_novelty_plus":
-                next_model, score, correct_examples, wp = adaptive_novelty_plus(
+                next_model, score, correct_examples, evaluations_done, wp = adaptive_novelty_plus(
                     prev_model,
                     neighbours,
                     data,
@@ -521,6 +525,7 @@ def learn_weighted_max_sat(
             # Computing a model update almost entirely comes down to evaluation all the model's neighbours, so
             # we include the time this update takes in the evaluation time
             evaluation_time += time.time() - time_point
+            number_of_evaluations += evaluations_done
 
         prev_model = model
         if method == "novelty_large":
@@ -556,6 +561,7 @@ def learn_weighted_max_sat(
                 current_score=score / data.shape[0],
                 number_of_neighbours=len(neighbours),
                 number_of_window_hits=total_window_hits,
+                number_of_evaluations=number_of_evaluations,
                 cumulative_time=cumulative_time,
                 random_restart_time=random_restart_time,
                 computing_neighbours_time=computing_neighbours_time,
