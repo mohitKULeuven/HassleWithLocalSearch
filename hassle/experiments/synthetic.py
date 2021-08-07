@@ -9,6 +9,7 @@ import os
 import json
 import time
 from tqdm import tqdm
+import random
 
 from hassle.type_def import MaxSatModel, Context
 from hassle.generator import generate_models, generate_contexts_and_data
@@ -353,6 +354,9 @@ def regret(n, target_model, learned_model, context):
     if len(learned_sols) == 0:
         return -1
     for learned_sol in learned_sols:
+        if len(learned_sol) < n:
+            for i in range(len(learned_sol), n):
+                learned_sol.append(random.random() < 0.5)
         learned_opt_val = get_value(target_model, learned_sol, context)
         if learned_opt_val is None or learned_opt_val > opt_val:
             raise Exception("error: calculating regret")
