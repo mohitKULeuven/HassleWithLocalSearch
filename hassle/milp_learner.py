@@ -367,7 +367,7 @@ def learn_weighted_max_sat_MILP(
 
     mod.optimize()
 
-    if mod.status == GRB.Status.OPTIMAL:
+    if mod.SolCount>0:
 
         def char(_i):
             return (" " if _i < n else "!") + "abcdefghijklmnopqrstuvwxyz"[
