@@ -282,12 +282,12 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p):
     )
 
     param += f"_method_{method}_cutoff_{cutoff}_noise_{p}"
-    if os.path.exists("pickles/learned_model/" + param + ".pickle"):
-        pickle_var = pickle.load(
-            open("pickles/learned_model/" + param + ".pickle", "rb")
-        )
-        tqdm.write("Exists: " + param + ": " + str(pickle_var["score"]) + "\n")
-        return pickle_var["learned_model"], pickle_var["time_taken"]
+    # if os.path.exists("pickles/learned_model/" + param + ".pickle"):
+    #     pickle_var = pickle.load(
+    #         open("pickles/learned_model/" + param + ".pickle", "rb")
+    #     )
+    #     tqdm.write("Exists: " + param + ": " + str(pickle_var["score"]) + "\n")
+    #     return pickle_var["learned_model"], pickle_var["time_taken"]
 
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
@@ -323,7 +323,7 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p):
     if not os.path.exists("pickles/learned_model"):
         os.makedirs("pickles/learned_model")
     pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
-    # tqdm.write(param + ": " + str(pickle_var["score"]) + "\n")
+    tqdm.write(param + ": " + str(pickle_var["score"]) + "\n")
     return learned_model, end - start
 
 
@@ -379,17 +379,13 @@ def get_learned_model(time_taken, max_cutoff, cutoff):
 logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     CLI = argparse.ArgumentParser()
-    CLI.add_argument("--function", type=str, default="evaluate")
+    CLI.add_argument("--function", type=str, default="learn")
     CLI.add_argument("--num_vars", nargs="*", type=int, default=[10])
     CLI.add_argument("--num_hard", nargs="*", type=int, default=[10])
     CLI.add_argument("--num_soft", nargs="*", type=int, default=[10])
-    CLI.add_argument(
-        "--model_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
-    )
+    CLI.add_argument("--model_seeds", nargs="*", type=int, default=[111])
     CLI.add_argument("--num_context", nargs="*", type=int, default=[100])
-    CLI.add_argument(
-        "--context_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
-    )
+    CLI.add_argument("--context_seeds", nargs="*", type=int, default=[111])
     CLI.add_argument("--num_pos", type=int, default=2)
     CLI.add_argument("--num_neg", type=int, default=2)
     CLI.add_argument("--neg_type", type=str, default="both")
@@ -405,10 +401,8 @@ if __name__ == "__main__":
             "MILP",
         ],
     )
-    CLI.add_argument(
-        "--cutoff", nargs="*", type=int, default=[60, 300, 600, 900, 1200, 1500, 1800]
-    )
-    CLI.add_argument("--noise", nargs="*", type=float, default=[0.05, 0.1, 0.2])
+    CLI.add_argument("--cutoff", nargs="*", type=int, default=[60])
+    CLI.add_argument("--noise", nargs="*", type=float, default=[0])
     CLI.add_argument("--weighted", type=int, default=1)
     CLI.add_argument("--naive", type=int, default=0)
     CLI.add_argument("--clause_len", type=int, default=0)
