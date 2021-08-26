@@ -9,6 +9,8 @@ import os
 import json
 import time
 from tqdm import tqdm
+from multiprocessing import Pool
+import math
 
 from hassle.type_def import MaxSatModel, Context
 from hassle.generator import generate_models, generate_contexts_and_data
@@ -49,44 +51,15 @@ def generate(args):
             bar.update(1)
 
 
-def learn(args):
-    iterations = (
-        len(args.num_vars)
-        * len(args.num_hard)
-        * len(args.num_soft)
-        * len(args.model_seeds)
-        * len(args.num_context)
-        * len(args.context_seeds)
-        * len(args.method)
-        * len(args.cutoff)
-        * len(args.noise)
-    )
-    bar = tqdm(total=iterations)
-    for n, h, s, seed, c, context_seed, m, t, p in it.product(
-        args.num_vars,
-        args.num_hard,
-        args.num_soft,
-        args.model_seeds,
-        args.num_context,
-        args.context_seeds,
-        args.method,
-        args.cutoff,
-        args.noise,
-    ):
-        param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
-        if args.neg_type:
-            param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
-        if m == "MILP":
-            try:
-                learn_model_MILP(h + s, m, t, param, p)
-            except FileNotFoundError:
-                continue
-        else:
-            try:
-                learn_model_sls(h + s, m, t, param, p, args.naive, args.clause_len)
-            except FileNotFoundError:
-                continue
-        bar.update(1)
+def learn(n, h, s, seed, c, context_seed, m, t, p):
+    param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
+    if args.neg_type:
+        param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
+    if m == "MILP":
+        learn_model_MILP(h + s, m, t, param, p)
+    else:
+        learn_model_sls(h + s, m, t, param, p, args.naive, args.clause_len)
+    pbar.update(1)
 
 
 def evaluate(args, bl):
@@ -376,6 +349,27 @@ def get_learned_model(time_taken, max_cutoff, cutoff):
     return index
 
 
+def parallel_learn(args):
+    iterations = list(
+        it.product(
+            args.num_vars,
+            args.num_hard,
+            args.num_soft,
+            args.model_seeds,
+            args.num_context,
+            args.context_seeds,
+            args.method,
+            args.cutoff,
+            args.noise,
+        )
+    )
+    global pbar
+    itr = math.ceil(len(list(iterations)) / args.pool)
+    pbar = tqdm(total=itr)
+    pool = Pool(args.pool)
+    pool.starmap(learn, iterations)
+
+
 logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     CLI = argparse.ArgumentParser()
@@ -413,7 +407,7 @@ if __name__ == "__main__":
         generate(args)
 
     elif args.function == "learn":
-        learn(args)
+        parallel_learn(args)
 
     elif args.function == "evaluate":
         evaluate(args, 0)
