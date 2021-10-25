@@ -365,9 +365,12 @@ def learn_weighted_max_sat_MILP(
     if cutoff > 0:
         mod.Params.timeLimit = cutoff
 
+    mod.Params.MIPFocus = 1
     mod.optimize()
 
-    if mod.SolCount>0:
+    # if mod.status == GRB.Status.OPTIMAL:
+    print(mod.SolCount, mod.status)
+    if mod.SolCount > 0:
 
         def char(_i):
             return (" " if _i < n else "!") + "abcdefghijklmnopqrstuvwxyz"[
