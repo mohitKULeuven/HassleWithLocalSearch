@@ -59,7 +59,7 @@ def learn(n, h, s, seed, c, context_seed, m, t, p):
         learn_model_MILP(h + s, m, t, param, p)
     else:
         learn_model_sls(h + s, m, t, param, p, args.naive, args.clause_len)
-    pbar.update(1)
+    # pbar.update(1)
 
 
 def evaluate(args, bl):
@@ -363,9 +363,9 @@ def parallel_learn(args):
             args.noise,
         )
     )
-    global pbar
-    itr = math.ceil(len(list(iterations)) / args.pool)
-    pbar = tqdm(total=itr)
+    # global pbar
+    # itr = math.ceil(len(list(iterations)) / args.pool)
+    # pbar = tqdm(total=itr)
     pool = Pool(args.pool)
     pool.starmap(learn, iterations)
 
@@ -395,7 +395,7 @@ if __name__ == "__main__":
             "MILP",
         ],
     )
-    CLI.add_argument("--cutoff", nargs="*", type=int, default=[60])
+    CLI.add_argument("--cutoff", nargs="*", type=int, default=[10])
     CLI.add_argument("--noise", nargs="*", type=float, default=[0])
     CLI.add_argument("--weighted", type=int, default=1)
     CLI.add_argument("--naive", type=int, default=0)
