@@ -28,9 +28,11 @@ def solve_weighted_max_sat(
         # c.append(list(map(int, list(clause))), weight=w)
         if w != 0 and len(clause) > 0:
             c.append(list(map(int, list(clause))), weight=w)
-    if len(context) > 0:
+    if context and len(context) > 0:
         # c.append(list(map(int, list(context))), weight=None)
-        c.append(list(map(int, list(context))))
+        # c.append(list(map(int, list(context))))
+
+        c.hard.extend([[int(c)] for c in context])
     s = RC2(c)
     sol = []
     cst = -1
@@ -41,6 +43,7 @@ def solve_weighted_max_sat(
 
         if cst < 0:
             cst = s.cost
+        # print(s.cost, cst, len(sol), num_sol)
         if s.cost > cst or len(sol) >= num_sol:
             break
         m = [v > 0 for v in m]
@@ -61,7 +64,7 @@ def solve_weighted_max_sat_file(
     """
     wcnf = WCNF(wcnf_file)
     if len(context) > 0:
-        wcnf.append(list(map(int, list(context))), weight=None)
+        wcnf.hard.extend(list(map(int, list(context))), weight=None)
     s = RC2(wcnf)
     model = []
     cst = -1
@@ -82,7 +85,8 @@ def get_value(model: MaxSatModel, instance: Instance, context=None) -> Optional[
     """
     model = copy.deepcopy(model)
     if context is not None and len(context) > 0:
-        model.append((None, context))
+        for c in context:
+            model.append((None, (c,)))
     value = 0
     for weight, clause in model:
         covered = len(clause) > 0 and any(

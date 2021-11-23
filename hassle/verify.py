@@ -41,7 +41,7 @@ def get_sdd_manager(n: int):
 def convert_to_logic(manager: SddManager, n: int, model: MaxSatModel, context: Context):
     best_solution, cst = solve_weighted_max_sat(n, model, context, 1)
 
-    if cst is -1:
+    if cst == -1:
         return None
     else:
         value = get_value(model, best_solution, context)
@@ -80,6 +80,7 @@ def get_recall_precision_wmc(
     n: int, true_model: MaxSatModel, learned_model: MaxSatModel, context: Context
 ):
     manager = get_sdd_manager(n)
+    # print(true_model, context)
     true_logic = convert_to_logic(manager, n, true_model, context)
     learned_logic = convert_to_logic(manager, n, learned_model, context)
     combined = true_logic & learned_logic

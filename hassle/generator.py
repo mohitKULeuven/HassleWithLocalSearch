@@ -195,6 +195,7 @@ def random_data(
     rng = np.random.RandomState(seed)
     data = []
     tmp_data, cst = solve_weighted_max_sat(n, model, context, num_pos * 10)
+    # print("Number of Positive examples: ",len(tmp_data))
     if len(tmp_data) > num_pos:
         indices = list(rng.choice(range(len(tmp_data)), num_pos, replace=False))
         for i in indices:

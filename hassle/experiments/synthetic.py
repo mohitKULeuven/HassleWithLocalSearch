@@ -21,188 +21,115 @@ from hassle.milp_learner import learn_weighted_max_sat_MILP
 from hassle.verify import get_recall_precision_wmc, get_infeasibility_wmc
 
 
-def generate(args):
-    iterations = (
-        len(args.num_vars)
-        * len(args.num_hard)
-        * len(args.num_soft)
-        * len(args.model_seeds)
-        * len(args.num_context)
-        * len(args.context_seeds)
+def generate(n, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
+    model, param = generate_models(n, int(n / 2), h, s, seed)
+    tag = generate_contexts_and_data(
+        n,
+        model,
+        nc,
+        num_pos,
+        num_neg,
+        neg_type,
+        param,
+        c_seed,
     )
-    bar = tqdm(total=iterations)
-    for n, h, s, seed in it.product(
-        args.num_vars, args.num_hard, args.num_soft, args.model_seeds
-    ):
-        model, param = generate_models(n, int(n / 2), h, s, seed)
-
-        for c, context_seed in it.product(args.num_context, args.context_seeds):
-            tag = generate_contexts_and_data(
-                n,
-                model,
-                c,
-                args.num_pos,
-                args.num_neg,
-                args.neg_type,
-                param,
-                context_seed,
-            )
-            tqdm.write(tag)
-            bar.update(1)
-
-
-def learn(n, h, s, seed, c, context_seed, m, t, p):
-    param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
-    if args.neg_type:
-        param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
-    if m == "MILP":
-        learn_model_MILP(h + s, m, t, param, p)
-    else:
-        learn_model_sls(h + s, m, t, param, p, args.naive, args.clause_len)
+    tqdm.write(tag)
     # pbar.update(1)
 
 
-def evaluate(args, bl):
-    iterations = (
-        len(args.num_vars)
-        * len(args.num_hard)
-        * len(args.num_soft)
-        * len(args.model_seeds)
-        * len(args.num_context)
-        * len(args.context_seeds)
-        * len(args.method)
-        * len(args.cutoff)
-        * len(args.noise)
-    )
-    bar = tqdm(total=iterations)
-    folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)")
-    os.makedirs(f"results/{folder_name}")
-    with open(f"results/{folder_name}/arguments.txt", "w") as f:
-        json.dump(args.__dict__, f, indent=2)
-    csvfile = open(f"results/{folder_name}/evaluation.csv", "w")
-    filewriter = csv.writer(csvfile, delimiter=",")
-    filewriter.writerow(
-        [
-            "num_vars",
-            "num_hard",
-            "num_soft",
-            "model_seed",
-            "num_context",
-            "context_seed",
-            "num_pos",
-            "num_neg",
-            "pos_per_context",
-            "neg_per_context",
-            "method",
-            "score",
-            "recall",
-            "precision",
-            "accuracy",
-            "f1_score",
-            "regret",
-            "infeasiblity",
-            "time_taken",
-            "cutoff",
-            "noise_probability",
-            "iterations",
-            "neighbours",
-        ]
-    )
-    for n, h, s, seed in it.product(
-        args.num_vars, args.num_hard, args.num_soft, args.model_seeds
-    ):
-        param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
-        target_model = pickle.load(
-            open("pickles/target_model/" + param + ".pickle", "rb")
-        )["true_model"]
-        max_t = max(args.cutoff)
-        for c, context_seed in it.product(args.num_context, args.context_seeds):
-            tag_cnd = (
-                param
-                + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
-            )
-            if args.neg_type:
-                tag_cnd = (
-                    param
-                    + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
-                )
-            pickle_cnd = pickle.load(
-                open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
-            )
-            for m, p in it.product(args.method, args.noise):
-                tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
-                if args.naive == 1:
-                    tag += "_naive"
-                if bl == 1:
-                    tag += "_bl"
-                pickle_var = pickle.load(
-                    open("pickles/learned_model/" + tag + ".pickle", "rb")
-                )
-                if c == 0:
-                    c = 1
-                labels = [True if l == 1 else False for l in pickle_cnd["labels"]]
-                pos_per_context = labels.count(True) / c
-                neg_per_context = labels.count(False) / c
-                last_index = -2
-                recall, precision, accuracy = (-1, -1, -1)
-                regret, infeasiblity, f1_score = (-1, -1, -1)
-                for t in args.cutoff:
-                    index = get_learned_model(pickle_var["time_taken"], max_t, t)
-                    learned_model = None
-                    time_taken = t
-                    iteration = 0
-                    num_nbr = 0
-                    score = -1
-                    if index is not None:
-                        learned_model = pickle_var["learned_model"][index]
-                        time_taken = pickle_var["time_taken"][index]
-                        if m != "MILP":
-                            iteration = pickle_var["iterations"][index]
-                            num_nbr = pickle_var["num_neighbour"][index]
-                        if learned_model:
-                            score = pickle_var["score"][index]
+def learn(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p):
+    param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
+    if neg_type:
+        param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+    if m == "MILP":
+        learn_model_MILP(h + s, m, t, param, p)
+    else:
+        learn_model_sls(h + s, m, t, param, p)
+    # pbar.update(1)
 
-                    if index != last_index:
-                        last_index = index
-                        contexts = pickle_cnd["contexts"]
-                        global_context = set()
-                        for context in contexts:
-                            global_context.update(context)
-                        if learned_model:
-                            recall, precision, accuracy, regret, infeasiblity = evaluate_statistics(
-                                n, target_model, learned_model, global_context
-                            )
-                        f1_score = 2 * recall * precision / (recall + precision)
-                    filewriter.writerow(
-                        [
-                            n,
-                            h,
-                            s,
-                            seed,
-                            c,
-                            context_seed,
-                            args.num_pos,
-                            args.num_neg,
-                            pos_per_context,
-                            neg_per_context,
-                            m,
-                            score,
-                            recall,
-                            precision,
-                            accuracy,
-                            f1_score,
-                            regret,
-                            infeasiblity,
-                            time_taken,
-                            t,
-                            p,
-                            iteration,
-                            num_nbr,
-                        ]
-                    )
-                    bar.update(1)
 
-    csvfile.close()
+def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, use_context):
+    max_t=60
+    param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
+    target_model = pickle.load(
+        open("pickles/target_model/" + param + ".pickle", "rb")
+    )["true_model"]
+    tag_cnd = (
+        param
+        + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
+    )
+    if neg_type:
+        tag_cnd = (
+            param
+            + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+        )
+    pickle_cnd = pickle.load(
+        open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
+    )
+    tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
+    if use_context==0:
+        tag+="_noContext"
+    # if args.naive == 1:
+    #     tag += "_naive"
+    # if bl == 1:
+    #     tag += "_bl"
+    pickle_var = pickle.load(
+        open("pickles/learned_model/" + tag + ".pickle", "rb")
+    )
+    if c == 0:
+        c = 1
+    labels = [True if l == 1 else False for l in pickle_cnd["labels"]]
+    pos_per_context = labels.count(True) / c
+    neg_per_context = labels.count(False) / c
+    last_index = -2
+    recall, precision, accuracy = (-1, -1, -1)
+    regret, infeasiblity, f1_score = (-1, -1, -1)
+    index = get_learned_model(pickle_var["time_taken"], max_t, t)
+    learned_model = None
+    time_taken = t
+    iteration = 0
+    num_nbr = 0
+    score = -1
+    if index is not None:
+        learned_model = pickle_var["learned_model"][index]
+        time_taken = pickle_var["time_taken"][index]
+        if m != "MILP":
+            iteration = pickle_var["iterations"][index]
+            num_nbr = pickle_var["num_neighbour"][index]
+        if learned_model:
+            score = pickle_var["score"][index]
+
+        # contexts = pickle_cnd["contexts"]
+        # global_context = set()
+        # for context in contexts:
+        #     global_context.update(context)
+        global_context=None
+        if learned_model:
+            (
+                recall,
+                precision,
+                accuracy,
+                regret,
+                infeasiblity,
+            ) = evaluate_statistics(
+                n, target_model, learned_model, global_context
+            )
+        f1_score = 2 * recall * precision / (recall + precision)
+    return (
+        pos_per_context,
+        neg_per_context,
+        score,
+        recall,
+        precision,
+        accuracy,
+        f1_score,
+        regret,
+        infeasiblity,
+        time_taken,
+        t,
+        iteration,
+        num_nbr,
+    )
 
 
 def learn_model_sls(num_constraints, method, cutoff, param, p, naive=0, clause_len=0):
@@ -211,6 +138,8 @@ def learn_model_sls(num_constraints, method, cutoff, param, p, naive=0, clause_l
     )
 
     param += f"_method_{method}_cutoff_{cutoff}_noise_{p}"
+    if use_context==0:
+        param+="_noContext"
     if naive == 1:
         param += "_naive"
     if os.path.exists("pickles/learned_model/" + param + ".pickle"):
@@ -223,6 +152,8 @@ def learn_model_sls(num_constraints, method, cutoff, param, p, naive=0, clause_l
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
     contexts = pickle_var["contexts"]
+    if use_context==0:
+        contexts=[None]*len(labels)
 
     inf = [True if l == -1 else False for l in labels]
     labels = np.array([True if l == 1 else False for l in labels])
@@ -255,12 +186,12 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p):
     )
 
     param += f"_method_{method}_cutoff_{cutoff}_noise_{p}"
-    # if os.path.exists("pickles/learned_model/" + param + ".pickle"):
-    #     pickle_var = pickle.load(
-    #         open("pickles/learned_model/" + param + ".pickle", "rb")
-    #     )
-    #     tqdm.write("Exists: " + param + ": " + str(pickle_var["score"]) + "\n")
-    #     return pickle_var["learned_model"], pickle_var["time_taken"]
+    if os.path.exists("pickles/learned_model/" + param + ".pickle"):
+        pickle_var = pickle.load(
+            open("pickles/learned_model/" + param + ".pickle", "rb")
+        )
+        tqdm.write("Exists: " + param + ": " + str(pickle_var["score"]) + "\n")
+        return pickle_var["learned_model"], pickle_var["time_taken"]
 
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
@@ -349,7 +280,7 @@ def get_learned_model(time_taken, max_cutoff, cutoff):
     return index
 
 
-def parallel_learn(args):
+def main(args):
     iterations = list(
         it.product(
             args.num_vars,
@@ -357,6 +288,9 @@ def parallel_learn(args):
             args.num_soft,
             args.model_seeds,
             args.num_context,
+            args.num_pos,
+            args.num_neg,
+            args.neg_type,
             args.context_seeds,
             args.method,
             args.cutoff,
@@ -364,25 +298,95 @@ def parallel_learn(args):
         )
     )
     # global pbar
-    # itr = math.ceil(len(list(iterations)) / args.pool)
+    itr = math.ceil(len(list(iterations)) / args.pool)
     # pbar = tqdm(total=itr)
     pool = Pool(args.pool)
-    pool.starmap(learn, iterations)
+    if args.function == "g":
+        pool.starmap(generate, [itr[:9] for itr in iterations])
+
+    elif args.function == "e":
+        folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)")
+        os.makedirs(f"results/{folder_name}")
+        with open(f"results/{folder_name}/arguments.txt", "w") as f:
+            json.dump(args.__dict__, f, indent=2)
+        csvfile = open(f"results/{folder_name}/evaluation.csv", "w")
+        filewriter = csv.writer(csvfile, delimiter=",")
+        filewriter.writerow(
+            [
+                "num_vars",
+                "num_hard",
+                "num_soft",
+                "model_seed",
+                "num_context",
+                "num_pos",
+                "num_neg",
+                "neg_type",
+                "context_seed",
+                "method",
+                "max_cutoff",
+                "noise",
+                "pos_per_context",
+                "neg_per_context",
+                "score",
+                "recall",
+                "precision",
+                "accuracy",
+                "f1_score",
+                "regret",
+                "infeasiblity",
+                "time_taken",
+                "cutoff",
+                "iterations",
+                "neighbours",
+            ]
+        )
+        stats = pool.starmap(evaluate, [itr.append(args.context) for itr in iterations])
+        for i, s in enumerate(stats):
+            tmp = list(iterations[i])
+            tmp.extend(list(s))
+            filewriter.writerow(tmp)
+        csvfile.close()
+    else:
+        pool.starmap(learn, [itr.append(args.context) for itr in iterations])
+
+
+# def parallel_learn(args):
+#     iterations = list(
+#         it.product(
+#             args.num_vars,
+#             args.num_hard,
+#             args.num_soft,
+#             args.model_seeds,
+#             args.num_context,
+#             args.num_pos,
+#             args.num_neg,
+#             args.neg_type,
+#             args.context_seeds,
+#             args.method,
+#             args.cutoff,
+#             args.noise,
+#         )
+#     )
+#     global pbar
+#     itr = math.ceil(len(list(iterations)) / args.pool)
+#     pbar = tqdm(total=itr)
+#     pool = Pool(args.pool)
+#     pool.starmap(learn, iterations)
 
 
 logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     CLI = argparse.ArgumentParser()
-    CLI.add_argument("--function", type=str, default="learn")
-    CLI.add_argument("--num_vars", nargs="*", type=int, default=[10])
-    CLI.add_argument("--num_hard", nargs="*", type=int, default=[10])
-    CLI.add_argument("--num_soft", nargs="*", type=int, default=[10])
+    CLI.add_argument("--function", type=str, default="l")
+    CLI.add_argument("--num_vars", nargs="*", type=int, default=[8])
+    CLI.add_argument("--num_hard", nargs="*", type=int, default=[5])
+    CLI.add_argument("--num_soft", nargs="*", type=int, default=[5])
     CLI.add_argument("--model_seeds", nargs="*", type=int, default=[111])
-    CLI.add_argument("--num_context", nargs="*", type=int, default=[100])
+    CLI.add_argument("--num_context", nargs="*", type=int, default=[50])
     CLI.add_argument("--context_seeds", nargs="*", type=int, default=[111])
-    CLI.add_argument("--num_pos", type=int, default=2)
-    CLI.add_argument("--num_neg", type=int, default=2)
-    CLI.add_argument("--neg_type", type=str, default="both")
+    CLI.add_argument("--num_pos", nargs="*", type=int, default=[2])
+    CLI.add_argument("--num_neg", nargs="*", type=int, default=[2])
+    CLI.add_argument("--neg_type", nargs="*", type=str, default=["both"])
     CLI.add_argument(
         "--method",
         nargs="*",
@@ -400,14 +404,17 @@ if __name__ == "__main__":
     CLI.add_argument("--weighted", type=int, default=1)
     CLI.add_argument("--naive", type=int, default=0)
     CLI.add_argument("--clause_len", type=int, default=0)
+    CLI.add_argument("--pool", type=int, default=10)
+    CLI.add_argument("--context", type=int, default=1)
 
     args = CLI.parse_args()
+    main(args)
 
-    if args.function == "generate":
-        generate(args)
-
-    elif args.function == "learn":
-        parallel_learn(args)
-
-    elif args.function == "evaluate":
-        evaluate(args, 0)
+    # if args.function == "generate":
+    #     generate(args)
+    #
+    # elif args.function == "learn":
+    #     parallel_learn(args)
+    #
+    # elif args.function == "evaluate":
+    #     evaluate(args, 0)

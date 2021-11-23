@@ -78,7 +78,9 @@ def eval_neighbours(neighbours, data, labels, contexts, num_neighbours, rng, inf
     for m, nbr in enumerate(neighbours):
         optimums = {}
         for i, example in enumerate(data):
-            key = "_".join(map(str, contexts[i]))
+            key="global"
+            if contexts[i]:
+                key = "_".join(map(str, contexts[i]))
             if key not in optimums:
                 optimums[key] = nbr.optimal_value(contexts[i])
             if nbr.is_correct(
