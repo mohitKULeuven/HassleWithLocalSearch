@@ -37,14 +37,14 @@ def generate(n, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
     # pbar.update(1)
 
 
-def learn(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p):
+def learn(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, use_context):
     param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
     if neg_type:
         param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
     if m == "MILP":
-        learn_model_MILP(h + s, m, t, param, p)
+        learn_model_MILP(h + s, m, t, param, p, use_context)
     else:
-        learn_model_sls(h + s, m, t, param, p)
+        learn_model_sls(h + s, m, t, param, p, use_context)
     # pbar.update(1)
 
 
@@ -132,7 +132,7 @@ def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p
     )
 
 
-def learn_model_sls(num_constraints, method, cutoff, param, p, naive=0, clause_len=0):
+def learn_model_sls(num_constraints, method, cutoff, param, p, use_context=1, naive=0, clause_len=0):
     pickle_var = pickle.load(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
@@ -180,7 +180,7 @@ def learn_model_sls(num_constraints, method, cutoff, param, p, naive=0, clause_l
     )
 
 
-def learn_model_MILP(num_constraints, method, cutoff, param, p):
+def learn_model_MILP(num_constraints, method, cutoff, param, p, use_context=1):
     pickle_var = pickle.load(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
@@ -295,6 +295,7 @@ def main(args):
             args.method,
             args.cutoff,
             args.noise,
+            args.context,
         )
     )
     # global pbar
@@ -340,14 +341,14 @@ def main(args):
                 "neighbours",
             ]
         )
-        stats = pool.starmap(evaluate, [itr.append(args.context) for itr in iterations])
+        stats = pool.starmap(evaluate, iterations)
         for i, s in enumerate(stats):
             tmp = list(iterations[i])
             tmp.extend(list(s))
             filewriter.writerow(tmp)
         csvfile.close()
     else:
-        pool.starmap(learn, [itr.append(args.context) for itr in iterations])
+        pool.starmap(learn, iterations)
 
 
 # def parallel_learn(args):
@@ -405,7 +406,7 @@ if __name__ == "__main__":
     CLI.add_argument("--naive", type=int, default=0)
     CLI.add_argument("--clause_len", type=int, default=0)
     CLI.add_argument("--pool", type=int, default=10)
-    CLI.add_argument("--context", type=int, default=1)
+    CLI.add_argument("--context", nargs="*", type=int, default=[1])
 
     args = CLI.parse_args()
     main(args)
