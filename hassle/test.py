@@ -8,6 +8,9 @@ Created on Mon Mar  2 16:36:56 2020
 import numpy as np
 from .local_search import learn_weighted_max_sat
 
+from .pysat_solver import solve_weighted_max_sat
+from .experiments.synthetic import evaluate_statistics
+
 
 def example1():
     # Example
@@ -153,35 +156,55 @@ def example2():
         {2, 3},
     ]
 
+def example3():
+    n=3
+    clause1 = (1,2,3)
+    clause2 = (1,)
+    clause3 = (2,-3)
+    model1=[(None, clause1),(1, clause2),(1, clause3)]
+    context=(-1,-2)
+    sol=solve_weighted_max_sat(3,model1,context,5)
+    assert len(sol[0])==1
 
-#    a, b, c, scores, best_scores = learn_weighted_max_sat(
-#        3, data, labels, contexts, "walk_sat", 18,cutoff_time=60
-#    )
-#    print(a)
-#    plt.plot(range(len(best_scores)), best_scores, "r-", label="Walk_SAT")
-#
-#    a, b, c, scores, best_scores = learn_weighted_max_sat(
-#        3, data, labels, contexts, "novelty", 18,cutoff_time=60
-#    )
-#    print(a)
-#    plt.plot(range(len(best_scores)), best_scores, "g-", label="Novelty")
-#
-##    a, b, c, scores, best_scores = learn_weighted_max_sat(
-##        3, data, labels, contexts, "novelty_plus", 18
-##    )
-##    print(a)
-##    plt.plot(range(len(best_scores)), best_scores, "b-", label="Novelty+")
-##
-##    a, b, c, scores, best_scores = learn_weighted_max_sat(
-##        3, data, labels, contexts, "adaptive_novelty_plus", 18
-##    )
-##    print(a)
-##    plt.plot(range(len(best_scores)), best_scores, "y-", label="Adaptive_Novelty+")
-#
-#    plt.legend(loc="lower right")
-#
-#    plt.show()
+    data=sol[0]
+    labels=[True]*len(sol[0])
+    contexts = [{-1, -2}] * len(labels)
+
+    data.append([False, False, False])
+    labels.append(False)
+    contexts.append(set())
+    data.append([True, True, False])
+    labels.append(True)
+    contexts.append(set())
+    data.append([True, True, True])
+    labels.append(True)
+    contexts.append({3})
+    data.append([True, True, False])
+    labels.append(False)
+    contexts.append({3})
+
+    data=np.array(data)
+    labels=np.array(labels)
+
+
+    lmodel1 = learn_weighted_max_sat(3, 3, data, labels, contexts, "walk_sat", "")
+
+    contexts = [set()] * len(labels)
+    lmodel2 = learn_weighted_max_sat(3, 3, data, labels, contexts, "walk_sat", "")
+    print(data, labels)
+    print(lmodel1)
+    print(lmodel2)
+
+    recall, precision, accuracy, reg, infeasiblity=evaluate_statistics(
+        n, model1, lmodel1, None
+    )
+    print(recall, precision, accuracy, reg, infeasiblity)
+
+    recall, precision, accuracy, reg, infeasiblity = evaluate_statistics(
+        n, model1, lmodel2, None
+    )
+    print(recall, precision, accuracy, reg, infeasiblity)
 
 
 if __name__ == "__main__":
-    example2()
+    example3()

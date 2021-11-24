@@ -49,7 +49,7 @@ def learn(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, u
 
 
 def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, use_context):
-    max_t=60
+    max_t=3600
     param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
     target_model = pickle.load(
         open("pickles/target_model/" + param + ".pickle", "rb")
@@ -81,11 +81,9 @@ def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p
     labels = [True if l == 1 else False for l in pickle_cnd["labels"]]
     pos_per_context = labels.count(True) / c
     neg_per_context = labels.count(False) / c
-    last_index = -2
     recall, precision, accuracy = (-1, -1, -1)
     regret, infeasiblity, f1_score = (-1, -1, -1)
     index = get_learned_model(pickle_var["time_taken"], max_t, t)
-    learned_model = None
     time_taken = t
     iteration = 0
     num_nbr = 0
@@ -326,6 +324,7 @@ def main(args):
                 "method",
                 "max_cutoff",
                 "noise",
+                "use_context",
                 "pos_per_context",
                 "neg_per_context",
                 "score",
@@ -339,7 +338,6 @@ def main(args):
                 "cutoff",
                 "iterations",
                 "neighbours",
-                "use_context",
             ]
         )
         stats = pool.starmap(evaluate, iterations)
@@ -352,40 +350,16 @@ def main(args):
         pool.starmap(learn, iterations)
 
 
-# def parallel_learn(args):
-#     iterations = list(
-#         it.product(
-#             args.num_vars,
-#             args.num_hard,
-#             args.num_soft,
-#             args.model_seeds,
-#             args.num_context,
-#             args.num_pos,
-#             args.num_neg,
-#             args.neg_type,
-#             args.context_seeds,
-#             args.method,
-#             args.cutoff,
-#             args.noise,
-#         )
-#     )
-#     global pbar
-#     itr = math.ceil(len(list(iterations)) / args.pool)
-#     pbar = tqdm(total=itr)
-#     pool = Pool(args.pool)
-#     pool.starmap(learn, iterations)
-
-
 logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     CLI = argparse.ArgumentParser()
     CLI.add_argument("--function", type=str, default="l")
-    CLI.add_argument("--num_vars", nargs="*", type=int, default=[8])
-    CLI.add_argument("--num_hard", nargs="*", type=int, default=[5])
-    CLI.add_argument("--num_soft", nargs="*", type=int, default=[5])
-    CLI.add_argument("--model_seeds", nargs="*", type=int, default=[111])
-    CLI.add_argument("--num_context", nargs="*", type=int, default=[50])
-    CLI.add_argument("--context_seeds", nargs="*", type=int, default=[111])
+    CLI.add_argument("--num_vars", nargs="*", type=int, default=[5])
+    CLI.add_argument("--num_hard", nargs="*", type=int, default=[2])
+    CLI.add_argument("--num_soft", nargs="*", type=int, default=[2])
+    CLI.add_argument("--model_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555])
+    CLI.add_argument("--num_context", nargs="*", type=int, default=[25])
+    CLI.add_argument("--context_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555])
     CLI.add_argument("--num_pos", nargs="*", type=int, default=[2])
     CLI.add_argument("--num_neg", nargs="*", type=int, default=[2])
     CLI.add_argument("--neg_type", nargs="*", type=str, default=["both"])
