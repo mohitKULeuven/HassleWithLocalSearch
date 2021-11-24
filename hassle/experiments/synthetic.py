@@ -339,6 +339,7 @@ def main(args):
                 "cutoff",
                 "iterations",
                 "neighbours",
+                "use_context",
             ]
         )
         stats = pool.starmap(evaluate, iterations)
