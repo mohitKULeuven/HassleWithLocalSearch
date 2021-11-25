@@ -114,7 +114,10 @@ def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p
             ) = evaluate_statistics(
                 n, target_model, learned_model, global_context
             )
-        f1_score = 2 * recall * precision / (recall + precision)
+        if recall+precision==0:
+            f1_score=0
+        else:
+            f1_score = 2 * recall * precision / (recall + precision)
     return (
         pos_per_context,
         neg_per_context,
