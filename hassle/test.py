@@ -8,9 +8,10 @@ Created on Mon Mar  2 16:36:56 2020
 import numpy as np
 from .local_search import learn_weighted_max_sat
 
-from .pysat_solver import solve_weighted_max_sat
+from .pysat_solver import solve_weighted_max_sat, get_value
 from .experiments.synthetic import evaluate_statistics
-
+# from hassle.pysat_solver import solve_weighted_max_sat, get_value, label_instance
+import pickle
 
 def example1():
     # Example
@@ -206,5 +207,38 @@ def example3():
     print(recall, precision, accuracy, reg, infeasiblity)
 
 
+def context_relevance(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed):
+    param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
+    target_model = pickle.load(
+        open("pickles/target_model/" + param + ".pickle", "rb")
+    )["true_model"]
+    tag_cnd = (
+            param
+            + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
+    )
+    if neg_type:
+        tag_cnd = (
+                param
+                + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+        )
+    pickle_cnd = pickle.load(
+        open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
+    )
+    sol, cost = solve_weighted_max_sat(n, target_model, None, 1)
+    opt_val = get_value(target_model, sol, None)
+    count=0
+    # print(target_model)
+    # print(pickle_cnd["data"], pickle_cnd["labels"])
+    for c in pickle_cnd["contexts"]:
+        # print(c)
+        sol, cost = solve_weighted_max_sat(n, target_model, c, 1)
+        # print(sol,cost)
+        # print(target_model, sol, c)
+        if opt_val == get_value(target_model, sol, c):
+            count+=1
+    return count, len(pickle_cnd["contexts"])
+
+
 if __name__ == "__main__":
-    example3()
+    print(context_relevance(5,2,2,111,25,2,2,"both",111))
+    # example3()

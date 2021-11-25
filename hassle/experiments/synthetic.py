@@ -49,7 +49,7 @@ def learn(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, u
 
 
 def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, use_context):
-    max_t=3600
+    max_t=60
     param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
     target_model = pickle.load(
         open("pickles/target_model/" + param + ".pickle", "rb")
@@ -83,7 +83,9 @@ def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p
     neg_per_context = labels.count(False) / c
     recall, precision, accuracy = (-1, -1, -1)
     regret, infeasiblity, f1_score = (-1, -1, -1)
+    # print("time taken: ", pickle_var["time_taken"])
     index = get_learned_model(pickle_var["time_taken"], max_t, t)
+    # print(t, index)
     time_taken = t
     iteration = 0
     num_nbr = 0
@@ -340,6 +342,7 @@ def main(args):
                 "neighbours",
             ]
         )
+        print(iterations)
         stats = pool.starmap(evaluate, iterations)
         for i, s in enumerate(stats):
             tmp = list(iterations[i])
@@ -354,11 +357,11 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     CLI = argparse.ArgumentParser()
     CLI.add_argument("--function", type=str, default="l")
-    CLI.add_argument("--num_vars", nargs="*", type=int, default=[5])
-    CLI.add_argument("--num_hard", nargs="*", type=int, default=[2])
-    CLI.add_argument("--num_soft", nargs="*", type=int, default=[2])
+    CLI.add_argument("--num_vars", nargs="*", type=int, default=[8])
+    CLI.add_argument("--num_hard", nargs="*", type=int, default=[5])
+    CLI.add_argument("--num_soft", nargs="*", type=int, default=[5])
     CLI.add_argument("--model_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555])
-    CLI.add_argument("--num_context", nargs="*", type=int, default=[25])
+    CLI.add_argument("--num_context", nargs="*", type=int, default=[20])
     CLI.add_argument("--context_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555])
     CLI.add_argument("--num_pos", nargs="*", type=int, default=[2])
     CLI.add_argument("--num_neg", nargs="*", type=int, default=[2])
@@ -369,10 +372,10 @@ if __name__ == "__main__":
         type=str,
         default=[
             "walk_sat",
-            "novelty",
-            "novelty_plus",
-            "adaptive_novelty_plus",
-            "MILP",
+            # "novelty",
+            # "novelty_plus",
+            # "adaptive_novelty_plus",
+            # "MILP",
         ],
     )
     CLI.add_argument("--cutoff", nargs="*", type=int, default=[10])
@@ -380,7 +383,7 @@ if __name__ == "__main__":
     CLI.add_argument("--weighted", type=int, default=1)
     CLI.add_argument("--naive", type=int, default=0)
     CLI.add_argument("--clause_len", type=int, default=0)
-    CLI.add_argument("--pool", type=int, default=10)
+    CLI.add_argument("--pool", type=int, default=1)
     CLI.add_argument("--context", nargs="*", type=int, default=[1])
 
     args = CLI.parse_args()

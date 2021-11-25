@@ -10,6 +10,7 @@ from .pysat_solver import (
     label_instance,
     is_infeasible,
     is_suboptimal,
+    get_value,
 )
 from .type_def import MaxSatModel, Context
 from pysat.examples.fm import FM
@@ -58,14 +59,25 @@ def generate_contexts_and_data(
         pickle_var["data"].extend(data)
         pickle_var["labels"].extend(labels)
     else:
-        for _ in range(num_context):
+        sol=solve_weighted_max_sat(n, model, None, 1)[0]
+        opt_val = get_value(model, sol, None)
+        # print(opt)
+        while num_context>0:
             context, data_seed = random_context(n, rng)
+            if context in pickle_var["contexts"]:
+                continue
+
+            sol, cst=solve_weighted_max_sat(n,model,context,1)
+            if not sol or opt_val==get_value(model, sol, None):
+                continue
             data, labels = random_data(
                 n, model, context, num_pos, num_neg, neg_type, data_seed
             )
             pickle_var["contexts"].extend([context] * len(data))
             pickle_var["data"].extend(data)
             pickle_var["labels"].extend(labels)
+            num_context-=1
+            print(num_context)
     if not os.path.exists("pickles/contexts_and_data"):
         os.makedirs("pickles/contexts_and_data")
     pickle.dump(
@@ -175,7 +187,7 @@ def sample_models(
 
 def random_context(n, rng):
     clause = []
-    indices = rng.choice(range(n), 2, replace=False)
+    indices = rng.choice(range(n), 3, replace=False)
     for i in range(n):
         if i in indices:
             clause.append(rng.choice([-1, 1]))
