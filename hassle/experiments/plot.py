@@ -11,6 +11,8 @@ import numpy as np
 import argparse
 import pandas as pd
 from mpl_toolkits import mplot3d
+import os
+import glob
 
 plt.rcParams.update({"font.size": 20})
 
@@ -28,21 +30,33 @@ CLI.add_argument(
     ],
 )
 CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
-CLI.add_argument("--folder", type=str, default="results/synthetic/")
+CLI.add_argument("--folder", type=str, default="results/synthetic_all_methods/")
 CLI.add_argument("--file", type=str, default="evaluation")
 CLI.add_argument("--type", type=str, default="line")
 args = CLI.parse_args()
 
-result_file = args.folder + args.file + ".csv"
+all_csv_files = [
+    file
+    for path, subdir, files in os.walk(args.folder)
+    for file in glob.glob(path + "/*.csv")
+]
+data = pd.concat((pd.read_csv(f) for f in all_csv_files))
 
-data = pd.read_csv(result_file)
-data["score"][data["accuracy"] == -1] = np.nan
-data["accuracy"] = data["accuracy"].replace(-1, np.nan)
-data["regret"] = data["regret"].replace(-1, np.nan)
+# result_file = args.folder + args.file + ".csv"
+#
+# data = pd.read_csv(result_file)
+# data["score"][data["accuracy"] == -1] = np.nan
+# data["accuracy"] = data["accuracy"].replace(-1, np.nan)
+# data["regret"] = data["regret"].replace(-1, np.nan)
 data["accuracy"] = data["accuracy"] / 100
 data["infeasiblity"] = data["infeasiblity"] / 100
 data["regret"] = data["regret"] / 100
 data["score"] = data["score"] / 100
+
+# data['score'][(data["score"] < 0)] = 0
+# data['accuracy'][(data["accuracy"] < 0)] = 0
+# data['infeasiblity'][(data["infeasiblity"] < 0)] = 1
+# data['regret'][(data["regret"] < 0)] = 1
 
 
 def std_err(x):
@@ -62,16 +76,23 @@ if args.type == "line":
     for i, stats in enumerate(args.aggregate):
         for j, c in enumerate([25, 50, 100]):
             tmp_data = data.loc[data["num_context"] == c]
+            # tmp_data = tmp_data.loc[data["cutoff"] <= 1800]
+            tmp_data = tmp_data.loc[tmp_data["cutoff"] >= 600]
+            # tmp_data = data.loc[data["cutoff"] <= 600]
+            tmp_data = tmp_data.loc[tmp_data["method"] != "MILP"]
+            # milp_data = tmp_data.loc[(tmp_data["score"] > 0) & (tmp_data["method"] == "MILP")]
+            # milp_data = milp_data[["model_seed", "context_seed", "max_cutoff"]]
+            # tmp_data = pd.merge(tmp_data, milp_data, on=["model_seed", "context_seed", "max_cutoff"])
+            # tmp_data = tmp_data.loc[(tmp_data["score"] != -1) & (tmp_data["method"] == "MILP")]
+            # print(milp_data["model_seed"])
+            # exit()
+
             # if i > 0:
-            tmp_data[stats][
-                (tmp_data["method"] == "MILP") & (tmp_data["num_context"] == 50)
-            ] = -1
-            #
             # tmp_data[stats][
-            #     (tmp_data["method"] == "MILP")
-            #     & (tmp_data["num_context"] == 25)
-            #     & (tmp_data["cutoff"] < 1200)
-            # ] = None
+            #     (tmp_data["method"] == "MILP") & (tmp_data["num_context"] == 50)
+            # ] = -1
+            #
+
             # tmp_data = tmp_data.drop(
             #     tmp_data[
             #         (tmp_data["method"] == "MILP") & (tmp_data["num_context"] == 50)
@@ -99,28 +120,30 @@ if args.type == "line":
                 columns=args.aggregate_over[1],
                 values=stats,
             )
-            mins = [600, 1200, 1800, 2400, 3000, 3600]
+            mins = [6, 60, 600, 1200, 1800, 2400, 3000, 3600]
             line_mean_df.plot(rot=0, ax=ax[i, j], style=linestyles)
             ax[i, j].get_legend().remove()
             ax[i, j].set_xticks(mins)
             ax[i, j].set_xticklabels([int(x / 60) for x in mins])
+            # ax[i, j].set_xlim(10, 1860)
             ax[i, j].set_ylabel(stats.capitalize())
             ax[i, j].set_xlabel("cutoff (in minutes)")
             ax[i, j].grid(True)
             ax[0, j].set_title(r"|$\mathcal{\Psi}$|=" + str(c))
-            if stats == "model_learned":
-                ax[i, j].set_ylim(0, 1.1)
-            elif stats == "score":
-                ax[i, j].set_ylim(0.85, 1.01)
-            elif stats == "accuracy":
-                ax[i, j].set_ylim(0.65, 0.9)
-                ax[i, j].set_yticks([0.6, 0.7, 0.8, 0.9])
-            elif stats == "f1_score":
-                ax[i, j].set_ylim(0.3, 1)
-            elif stats == "regret":
-                ax[i, j].set_ylim(0.009, 0.03)
-            elif stats == "infeasiblity":
-                ax[i, j].set_ylim(0, 0.25)
+            # if stats == "model_learned":
+            #     ax[i, j].set_ylim(0, 1.1)
+            # elif stats == "score":
+            #     ax[i, j].set_ylim(0.85, 1.01)
+            # elif stats == "accuracy":
+            #     ax[i, j].set_ylim(0.65, 0.9)
+            #     ax[i, j].set_yticks([0.6, 0.7, 0.8, 0.9])
+            # elif stats == "f1_score":
+            #     ax[i, j].set_ylim(0.3, 1)
+            # if stats == "regret":
+            #     ax[i, j].set_ylim(0.05, 0.15)
+            #     ax[i, j].set_yticks([0.06, 0.1, 0.14])
+            # elif stats == "infeasiblity":
+                # ax[i, j].set_ylim(0, 0.25)
             handles, labels = ax[i, j].get_legend_handles_labels()
 
     for i, l in enumerate(labels):
@@ -128,11 +151,16 @@ if args.type == "line":
             labels[i] = "adaptive_novelty" + r"$^+$"
         if l == "novelty_plus":
             labels[i] = "novelty" + r"$^+$"
+        if l=="0":
+            labels[i] = "context not used"
+        if l=="1":
+            labels[i] = "context used"
+
     lgd = fig.legend(
         handles=handles,
         labels=labels,
         loc="upper center",
-        ncol=3,
+        ncol=4,
         bbox_to_anchor=(0.35, 1.0, 0.2, 0),
     )
     plt.savefig(

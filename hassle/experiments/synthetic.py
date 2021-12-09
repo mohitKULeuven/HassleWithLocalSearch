@@ -49,7 +49,7 @@ def learn(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, u
 
 
 def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, use_context):
-    max_t=60
+    max_t=3600
     param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
     target_model = pickle.load(
         open("pickles/target_model/" + param + ".pickle", "rb")
@@ -361,10 +361,10 @@ if __name__ == "__main__":
     CLI = argparse.ArgumentParser()
     CLI.add_argument("--function", type=str, default="l")
     CLI.add_argument("--num_vars", nargs="*", type=int, default=[8])
-    CLI.add_argument("--num_hard", nargs="*", type=int, default=[5])
-    CLI.add_argument("--num_soft", nargs="*", type=int, default=[5])
+    CLI.add_argument("--num_hard", nargs="*", type=int, default=[10])
+    CLI.add_argument("--num_soft", nargs="*", type=int, default=[10])
     CLI.add_argument("--model_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555])
-    CLI.add_argument("--num_context", nargs="*", type=int, default=[20])
+    CLI.add_argument("--num_context", nargs="*", type=int, default=[25, 50, 100])
     CLI.add_argument("--context_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555])
     CLI.add_argument("--num_pos", nargs="*", type=int, default=[2])
     CLI.add_argument("--num_neg", nargs="*", type=int, default=[2])
@@ -375,10 +375,10 @@ if __name__ == "__main__":
         type=str,
         default=[
             "walk_sat",
-            # "novelty",
-            # "novelty_plus",
-            # "adaptive_novelty_plus",
-            # "MILP",
+            "novelty",
+            "novelty_plus",
+            "adaptive_novelty_plus",
+            "MILP",
         ],
     )
     CLI.add_argument("--cutoff", nargs="*", type=int, default=[10])
