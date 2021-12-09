@@ -188,7 +188,7 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p, use_context=1):
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
 
-    param += f"_method_{method}_cutoff_{cutoff}_noise_{p}"
+    param += f"_method_{method}_cutoff_{cutoff}_noise_{p}_mipFocus_{0}"
     if os.path.exists("pickles/learned_model/" + param + ".pickle"):
         pickle_var = pickle.load(
             open("pickles/learned_model/" + param + ".pickle", "rb")
