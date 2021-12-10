@@ -66,7 +66,7 @@ def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p
     pickle_cnd = pickle.load(
         open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
     )
-    tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}_mipFocus_{0}"
+    tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
     if use_context==0:
         tag+="_noContext"
     # if args.naive == 1:
@@ -188,7 +188,7 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p, use_context=1):
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
 
-    param += f"_method_{method}_cutoff_{cutoff}_noise_{p}_mipFocus_{0}"
+    param += f"_method_{method}_cutoff_{cutoff}_noise_{p}"
     if os.path.exists("pickles/learned_model/" + param + ".pickle"):
         pickle_var = pickle.load(
             open("pickles/learned_model/" + param + ".pickle", "rb")
@@ -345,7 +345,7 @@ def main(args):
                 "neighbours",
             ]
         )
-        print(iterations)
+        # print(iterations)
         stats = pool.starmap(evaluate, iterations)
         for i, s in enumerate(stats):
             tmp = list(iterations[i])

@@ -365,7 +365,7 @@ def learn_weighted_max_sat_MILP(
     if cutoff > 0:
         mod.Params.timeLimit = cutoff
 
-    # mod.Params.MIPFocus = 1
+    mod.Params.MIPFocus = 1
     mod.optimize()
 
     # if mod.status == GRB.Status.OPTIMAL:

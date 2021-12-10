@@ -15,7 +15,9 @@ def std_err(x):
 ########### for MILP vs SLS ##############
 def MILPvsSLS(data):
     tmp_data = data.loc[data["cutoff"] >= 600]
+    # print(tmp_data["method"])
     tmp_data = tmp_data.loc[(tmp_data["method"] == "walk_sat") | (tmp_data["method"] == "MILP")]
+    # print(tmp_data["method"])
     milp_data = tmp_data.loc[(tmp_data["score"] > 0) & (tmp_data["method"] == "MILP")]
     milp_data = milp_data[["model_seed", "context_seed", "max_cutoff"]]
     tmp_data = pd.merge(tmp_data, milp_data, on=["model_seed", "context_seed", "max_cutoff"])
@@ -123,7 +125,7 @@ def compareSLS_synthetic(args, data):
 def compareModelsLearned(args, data):
     # fig, ax = plt.subplots(1, 1, figsize=(5, 3))
     plt.figure(figsize=(5, 3))
-    tmp_data=data
+    tmp_data=data.copy()
     tmp_data["model_learned"] = 1 - tmp_data["accuracy"].isna().astype(int)
     tmp_data["method"][tmp_data["method"] != "MILP"] = "SLS"
 
@@ -271,3 +273,4 @@ if __name__ == "__main__":
     data["score"] = data["score"] / 100
 
     compareModelsLearned(args, data)
+    MILPvsSLS(data)
