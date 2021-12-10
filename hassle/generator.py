@@ -77,7 +77,7 @@ def generate_contexts_and_data(
             pickle_var["data"].extend(data)
             pickle_var["labels"].extend(labels)
             num_context-=1
-            print(num_context)
+            # print(num_context)
     if not os.path.exists("pickles/contexts_and_data"):
         os.makedirs("pickles/contexts_and_data")
     pickle.dump(
@@ -187,7 +187,7 @@ def sample_models(
 
 def random_context(n, rng):
     clause = []
-    indices = rng.choice(range(n), 4, replace=False)
+    indices = rng.choice(range(n), int(n/2), replace=False)
     for i in range(n):
         if i in indices:
             clause.append(rng.choice([-1, 1]))
