@@ -62,6 +62,7 @@ def generate_contexts_and_data(
         sol=solve_weighted_max_sat(n, model, None, 1)[0]
         opt_val = get_value(model, sol, None)
         # print(opt)
+        start = time.time()
         while num_context>0:
             context, data_seed = random_context(n, rng)
             if context in pickle_var["contexts"]:
@@ -77,6 +78,8 @@ def generate_contexts_and_data(
             pickle_var["data"].extend(data)
             pickle_var["labels"].extend(labels)
             num_context-=1
+            if time.time()-start > 120:
+                return False
             # print(num_context)
     if not os.path.exists("pickles/contexts_and_data"):
         os.makedirs("pickles/contexts_and_data")

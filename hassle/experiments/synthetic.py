@@ -22,17 +22,20 @@ from hassle.verify import get_recall_precision_wmc, get_infeasibility_wmc
 
 
 def generate(n, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
-    model, param = generate_models(n, int(n / 2), h, s, seed)
-    tag = generate_contexts_and_data(
-        n,
-        model,
-        nc,
-        num_pos,
-        num_neg,
-        neg_type,
-        param,
-        c_seed,
-    )
+    tag=False
+    while not tag:
+        model, param = generate_models(n, int(n / 2), h, s, seed)
+        tag = generate_contexts_and_data(
+            n,
+            model,
+            nc,
+            num_pos,
+            num_neg,
+            neg_type,
+            param,
+            c_seed,
+        )
+        seed+=1
     tqdm.write(tag)
     # pbar.update(1)
 
