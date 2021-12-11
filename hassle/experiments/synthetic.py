@@ -24,6 +24,7 @@ from hassle.verify import get_recall_precision_wmc, get_infeasibility_wmc
 def generate(n, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
     tag=False
     while not tag:
+        print(seed)
         model, param = generate_models(n, int(n / 2), h, s, seed)
         tag = generate_contexts_and_data(
             n,
