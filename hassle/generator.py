@@ -4,6 +4,7 @@ import pickle
 import os
 import itertools as it
 import copy
+import time
 
 from .pysat_solver import (
     solve_weighted_max_sat,
