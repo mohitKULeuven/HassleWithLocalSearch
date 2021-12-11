@@ -43,9 +43,14 @@ def generate(n, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
 
 
 def learn(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, use_context):
-    param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
-    if neg_type:
-        param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+    found=False
+    while not found:
+        param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
+        if neg_type:
+            param = f"_n_{n}_max_clause_length_{int(n / 2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+        if os.path.exists("pickles/contexts_and_data/" + param + ".pickle"):
+            found = True
+        seed+=1
     if m == "MILP":
         learn_model_MILP(h + s, m, t, param, p, use_context)
     else:
