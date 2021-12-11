@@ -79,7 +79,7 @@ def generate_contexts_and_data(
             pickle_var["data"].extend(data)
             pickle_var["labels"].extend(labels)
             num_context-=1
-            if time.time()-start > 120:
+            if time.time()-start > 60:
                 return False
             # print(num_context)
     if not os.path.exists("pickles/contexts_and_data"):
