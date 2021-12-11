@@ -65,6 +65,8 @@ def generate_contexts_and_data(
         # print(opt)
         start = time.time()
         while num_context>0:
+            if time.time()-start > 60:
+                return False
             context, data_seed = random_context(n, rng)
             if context in pickle_var["contexts"]:
                 continue
@@ -79,8 +81,6 @@ def generate_contexts_and_data(
             pickle_var["data"].extend(data)
             pickle_var["labels"].extend(labels)
             num_context-=1
-            if time.time()-start > 60:
-                return False
             # print(num_context)
     if not os.path.exists("pickles/contexts_and_data"):
         os.makedirs("pickles/contexts_and_data")

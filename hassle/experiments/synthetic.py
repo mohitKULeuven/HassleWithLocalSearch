@@ -37,6 +37,7 @@ def generate(n, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
             c_seed,
         )
         seed+=1
+        # c_seed+=1
     tqdm.write(tag)
     # pbar.update(1)
 
