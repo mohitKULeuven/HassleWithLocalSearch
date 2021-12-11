@@ -25,11 +25,11 @@ _MIN_WEIGHT, _MAX_WEIGHT = 1, 101
 
 def generate_models(n, max_clause_length, num_hard, num_soft, model_seed):
     param = f"_n_{n}_max_clause_length_{max_clause_length}_num_hard_{num_hard}_num_soft_{num_soft}_model_seed_{model_seed}"
-    # if os.path.exists("pickles/target_model/" + param + ".pickle"):
-    #     true_model = pickle.load(
-    #         open("pickles/target_model/" + param + ".pickle", "rb")
-    #     )["true_model"]
-    #     return true_model, param
+    if os.path.exists("pickles/target_model/" + param + ".pickle"):
+        true_model = pickle.load(
+            open("pickles/target_model/" + param + ".pickle", "rb")
+        )["true_model"]
+        return true_model, param
     rng = np.random.RandomState(model_seed)
     true_model = generate_model(n, max_clause_length, num_hard, num_soft, rng)
     pickle_var = {}
@@ -44,8 +44,8 @@ def generate_contexts_and_data(
     n, model, num_context, num_pos, num_neg, neg_type, param, context_seed
 ):
     param += f"_num_context_{num_context}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
-    # if os.path.exists("pickles/contexts_and_data/" + param + ".pickle"):
-    #     return param
+    if os.path.exists("pickles/contexts_and_data/" + param + ".pickle"):
+        return param
     pickle_var = {}
     rng = np.random.RandomState(context_seed)
     pickle_var["contexts"] = []
