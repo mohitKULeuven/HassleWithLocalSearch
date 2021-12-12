@@ -60,22 +60,28 @@ def learn(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, u
 
 def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, use_context):
     max_t=3600
-    param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
-    target_model = pickle.load(
-        open("pickles/target_model/" + param + ".pickle", "rb")
-    )["true_model"]
-    tag_cnd = (
-        param
-        + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
-    )
-    if neg_type:
+    found = False
+    while not found:
+        param = f"_n_{n}_max_clause_length_{int(n/2)}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
         tag_cnd = (
             param
-            + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+            + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
         )
-    pickle_cnd = pickle.load(
-        open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
-    )
+        if neg_type:
+            tag_cnd = (
+                param
+                + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+            )
+        if not os.path.exists("pickles/contexts_and_data/" + tag_cnd + ".pickle"):
+            seed+=1
+            continue
+        found=True
+        target_model = pickle.load(
+            open("pickles/target_model/" + param + ".pickle", "rb")
+        )["true_model"]
+        pickle_cnd = pickle.load(
+            open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
+        )
     tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
     if use_context==0:
         tag+="_noContext"
