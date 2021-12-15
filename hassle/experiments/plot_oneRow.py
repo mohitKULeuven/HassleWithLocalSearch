@@ -32,9 +32,9 @@ CLI.add_argument(
     nargs="*",
     type=str,
     default=[
-        "results/synthetic_vars/",
-        "results/synthetic_soft/",
-        "results/synthetic_hard/",
+        "results/num_vars/",
+        "results/num_soft/",
+        "results/num_hard/",
     ],
 )
 CLI.add_argument("--file", type=str, default="evaluation")
@@ -72,20 +72,13 @@ for i, var in enumerate(args.aggregate_over):
     for j, stats in enumerate(args.aggregate):
         r = int(j / 2)
         tmp_data = data.loc[data["method"] == "walk_sat"]
-        # tmp_data = data
-        tmp_data["model_learned"] = 1 - tmp_data["accuracy"].isna().astype(int)
-
-        #        tmp_data["infeasible"] = tmp_data["regret"].isna()
-
-        if tmp_data[stats][tmp_data["method"] == "MILP"].isnull().all():
-            tmp_data[stats][tmp_data["method"] == "MILP"] = -1
         mean_table = pd.pivot_table(tmp_data, [stats], index=[var], aggfunc=np.mean)
         std_table = pd.pivot_table(tmp_data, [stats], index=[var], aggfunc=std_err)
         cmap = col.ListedColormap(colors[j:])
         mean_table.plot(rot=0, ax=ax[r, i], cmap=cmap, style=[linestyles[j]])
-        ax[0, i].set_ylim(0.5, 1.01)
-        ax[0, i].set_yticks([0.6, 0.8, 1.0])
-        ax[1, i].set_yticks([0.0, 0.05, 0.1])
+        # ax[0, i].set_ylim(0.5, 1.01)
+        # ax[0, i].set_yticks([0.6, 0.8, 1.0])
+        # ax[1, i].set_yticks([0.0, 0.05, 0.1])
         ax[r, i].get_legend().remove()
         ax[r, 0].set_xticks([8, 10, 12, 15])
         ax[r, 1].set_xticks([2, 5, 10, 15])
@@ -99,10 +92,10 @@ fig.legend(  # The line objects
     handles=h,
     labels=l,
     loc="upper center",  # Position of legend
-    bbox_to_anchor=(0.1, 1.02, 0.69, 0.1),
+    # bbox_to_anchor=(0.1, 1.02, 0.69, 0.1),
     #            mode="expand",
     ncol=4,
-    #            borderaxespad=0.1,    # Small spacing around legend box
+    borderaxespad=0.1,    # Small spacing around legend box
     #            title="Statistics"  # Title for the legend
 )
 plt.savefig(

@@ -82,6 +82,8 @@ def evaluate(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p
         pickle_cnd = pickle.load(
             open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
         )
+    if p == 0:
+        p = int(p)
     tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
     if use_context==0:
         tag+="_noContext"
