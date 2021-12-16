@@ -35,16 +35,16 @@ _MIN_WEIGHT, _MAX_WEIGHT = 1, 100
 
 
 def generate(path, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
-    initial_seed=seed
     for cnf_file in os.listdir(path):
         if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
+            adaptive_seed = seed
             tag = False
             while not tag:
-                if seed-initial_seed>100:
+                if adaptive_seed-seed>100:
                     break
-                model, n, m = cnf_to_model(path + cnf_file, h+s, seed)
-                model = add_weights_cnf(model, m, s, seed)
-                param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
+                model, n, m = cnf_to_model(path + cnf_file, h+s, adaptive_seed)
+                model = add_weights_cnf(model, m, s, adaptive_seed)
+                param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{adaptive_seed}"
                 pickle_var = {}
                 pickle_var["true_model"] = model
                 if not os.path.exists("pickles/target_model"):
@@ -63,20 +63,23 @@ def generate(path, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
                     param,
                     c_seed,
                 )
-                seed += 1
+                adaptive_seed += 1
             tqdm.write(tag)
 
 
 def learn(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, method, t, p):
     for cnf_file in os.listdir(path):
         if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
+            adaptive_seed=seed
             found = False
             while not found:
-                n, m = cnf_param(args.path + cnf_file, h+s)
-                param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+                if adaptive_seed-seed>100:
+                    break
+                n, m = cnf_param(path + cnf_file, h+s)
+                param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{adaptive_seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
                 if os.path.exists("pickles/contexts_and_data/" + param + ".pickle"):
                     found = True
-                seed += 1
+                adaptive_seed += 1
             if method == "MILP":
                 try:
                     learn_model_MILP(m, method, t, param, p, 1)
