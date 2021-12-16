@@ -128,8 +128,6 @@ def evaluate(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t
             if p == 0:
                 p = int(p)
             tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
-            if use_context == 0:
-                tag += "_noContext"
             # if args.naive == 1:
             #     tag += "_naive"
             # if bl == 1:
