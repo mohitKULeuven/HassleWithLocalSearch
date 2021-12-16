@@ -28,6 +28,7 @@ from hassle.experiments.synthetic import (
 from hassle.pysat_solver import solve_weighted_max_sat, get_value, label_instance
 from hassle.verify import get_recall_precision_sampling
 from tqdm import tqdm
+from multiprocessing import Pool
 
 logger = logging.getLogger(__name__)
 _MIN_WEIGHT, _MAX_WEIGHT = 1, 100
@@ -468,6 +469,7 @@ if __name__ == "__main__":
     CLI.add_argument("--cutoff", nargs="*", type=int, default=[2, 10, 60])
     CLI.add_argument("--noise", nargs="*", type=float, default=[0])
     CLI.add_argument("--pool", type=int, default=1)
+
     args = CLI.parse_args()
 
     main(args)
