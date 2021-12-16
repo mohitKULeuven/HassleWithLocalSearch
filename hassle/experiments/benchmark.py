@@ -24,6 +24,7 @@ from hassle.experiments.synthetic import (
     learn_model_MILP,
     regret,
     evaluate_statistics,
+    get_learned_model,
 )
 from hassle.pysat_solver import solve_weighted_max_sat, get_value, label_instance
 from hassle.verify import get_recall_precision_sampling
