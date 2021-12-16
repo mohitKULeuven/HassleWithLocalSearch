@@ -94,7 +94,7 @@ def learn(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, method,
                     continue
 
 
-def evaluate(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, use_context):
+def evaluate(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p):
     for cnf_file in os.listdir(path):
         if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
             adaptive_seed = seed
