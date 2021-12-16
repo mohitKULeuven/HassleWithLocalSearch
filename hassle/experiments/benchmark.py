@@ -35,29 +35,35 @@ _MIN_WEIGHT, _MAX_WEIGHT = 1, 100
 
 
 def generate(path, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
+    initial_seed=seed
     for cnf_file in os.listdir(path):
         if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
-            model, n, m = cnf_to_model(path + cnf_file, h+s, 111)
-            model = add_weights_cnf(model, m, s, seed)
-            param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
-            pickle_var = {}
-            pickle_var["true_model"] = model
-            if not os.path.exists("pickles/target_model"):
-                os.makedirs("pickles/target_model")
-            pickle.dump(
-                pickle_var,
-                open("pickles/target_model/" + param + ".pickle", "wb"),
-            )
-            tag = generate_contexts_and_data(
-                n,
-                model,
-                nc,
-                num_pos,
-                num_neg,
-                neg_type,
-                param,
-                c_seed,
-            )
+            tag = False
+            while not tag:
+                if seed-initial_seed>100:
+                    break
+                model, n, m = cnf_to_model(path + cnf_file, h+s, seed)
+                model = add_weights_cnf(model, m, s, seed)
+                param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
+                pickle_var = {}
+                pickle_var["true_model"] = model
+                if not os.path.exists("pickles/target_model"):
+                    os.makedirs("pickles/target_model")
+                pickle.dump(
+                    pickle_var,
+                    open("pickles/target_model/" + param + ".pickle", "wb"),
+                )
+                tag = generate_contexts_and_data(
+                    n,
+                    model,
+                    nc,
+                    num_pos,
+                    num_neg,
+                    neg_type,
+                    param,
+                    c_seed,
+                )
+                seed += 1
             tqdm.write(tag)
 
 
