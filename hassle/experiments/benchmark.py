@@ -70,8 +70,13 @@ def generate(path, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
 def learn(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, method, t, p):
     for cnf_file in os.listdir(path):
         if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
-            n, m = cnf_param(args.path + cnf_file, h+s)
-            param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+            found = False
+            while not found:
+                n, m = cnf_param(args.path + cnf_file, h+s)
+                param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+                if os.path.exists("pickles/contexts_and_data/" + param + ".pickle"):
+                    found = True
+                seed += 1
             if method == "MILP":
                 try:
                     learn_model_MILP(m, method, t, param, p, 1)
