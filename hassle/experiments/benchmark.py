@@ -94,169 +94,106 @@ def learn(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, method,
                     continue
 
 
-def evaluate(args, bl):
-    folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)")
-    os.makedirs(f"results/{folder_name}")
-    with open(f"results/{folder_name}/arguments.txt", "w") as f:
-        json.dump(args.__dict__, f, indent=2)
-    csvfile = open(f"results/{folder_name}/evaluation.csv", "w")
-    filewriter = csv.writer(csvfile, delimiter=",")
-    filewriter.writerow(
-        [
-            "num_vars",
-            "num_hard",
-            "num_soft",
-            "model_seed",
-            "num_context",
-            "context_seed",
-            "num_pos",
-            "num_neg",
-            "pos_per_context",
-            "neg_per_context",
-            "method",
-            "score",
-            "recall",
-            "precision",
-            "accuracy",
-            "f1_score",
-            "regret",
-            "infeasiblity",
-            "f1_random",
-            "regret_random",
-            "inf_random",
-            "time_taken",
-            "cutoff",
-            "noise_probability",
-            "iterations",
-            "bl",
-        ]
-    )
-    if not args.filename:
-        args.filename = os.listdir(args.path)
-    iterations = (
-        len(args.filename)
-        * len(args.per_soft)
-        * len(args.model_seeds)
-        * len(args.num_context)
-        * len(args.context_seeds)
-        * len(args.method)
-        * len(args.cutoff)
-        * len(args.noise)
-    )
-    bar = tqdm(total=iterations)
-    for s, seed in it.product(args.per_soft, args.model_seeds):
-        for cnf_file in args.filename:
-            if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
-                n, m = cnf_param(args.path + cnf_file, args.num_constraints)
-                num_soft = int(m * s / 100)
-                param = f"_{cnf_file}_num_constraints_{args.num_constraints}_per_soft_{s}_model_seed_{seed}"
-                pickle_var = pickle.load(
-                    open("pickles/target_model/" + param + ".pickle", "rb")
-                )
-                target_model = pickle_var["true_model"]
-                max_t = max(args.cutoff)
-                for c, context_seed in it.product(args.num_context, args.context_seeds):
-                    tag_cnd = (
+def evaluate(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, use_context):
+    for cnf_file in os.listdir(path):
+        if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
+            adaptive_seed = seed
+            n, _ = cnf_param(path + cnf_file, h+s)
+            max_t = 3600
+            found = False
+            while not found:
+                if adaptive_seed-seed>100:
+                    break
+                param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{adaptive_seed}"
+                tag_cnd = (
                         param
-                        + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
-                    )
-                    if args.neg_type:
-                        tag_cnd = (
+                        + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
+                )
+                if neg_type:
+                    tag_cnd = (
                             param
-                            + f"_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
-                        )
-                    pickle_cnd = pickle.load(
-                        open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
+                            + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
                     )
-                    for method, t, p in it.product(
-                        args.method, args.cutoff, args.noise
-                    ):
-                        tag_lm = tag_cnd + f"_method_{method}_cutoff_{max_t}_noise_{p}"
-                        if bl == 1:
-                            tag_lm += "_bl"
-                        if args.weighted == 0:
-                            pickle_var = pickle.load(
-                                open(
-                                    "pickles/learned_model/" + tag_lm + ".pickle", "rb"
-                                )
-                            )
-                        else:
-                            pickle_var = pickle.load(
-                                open(
-                                    "pickles/learned_model/" + tag_lm + ".pickle", "rb"
-                                )
-                            )
-                        i = 0
-                        if t < max_t:
-                            for i, cutoff in enumerate(pickle_var["time_taken"]):
-                                if cutoff > t:
-                                    break
-                        learned_model = pickle_var["learned_model"][i - 1]
-                        time_taken = pickle_var["time_taken"][i - 1]
-                        score = pickle_var["score"][i - 1]
-                        iteration = pickle_var["iterations"][i - 1]
+                if not os.path.exists("pickles/contexts_and_data/" + tag_cnd + ".pickle"):
+                    adaptive_seed += 1
+                    continue
+                found = True
+                target_model = pickle.load(
+                    open("pickles/target_model/" + param + ".pickle", "rb")
+                )["true_model"]
+                pickle_cnd = pickle.load(
+                    open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
+                )
 
-                        contexts = pickle_cnd["contexts"]
-                        global_context = set()
-                        for context in contexts:
-                            global_context.update(context)
+            if p == 0:
+                p = int(p)
+            tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
+            if use_context == 0:
+                tag += "_noContext"
+            # if args.naive == 1:
+            #     tag += "_naive"
+            # if bl == 1:
+            #     tag += "_bl"
+            pickle_var = pickle.load(
+                open("pickles/learned_model/" + tag + ".pickle", "rb")
+            )
+            if c == 0:
+                c = 1
+            labels = [True if l == 1 else False for l in pickle_cnd["labels"]]
+            pos_per_context = labels.count(True) / c
+            neg_per_context = labels.count(False) / c
+            recall, precision, accuracy = (-1, -1, -1)
+            regret, infeasiblity, f1_score = (-1, -1, -1)
+            # print("time taken: ", pickle_var["time_taken"])
+            index = get_learned_model(pickle_var["time_taken"], max_t, t)
+            # print(t, index)
+            time_taken = t
+            iteration = 0
+            num_nbr = 0
+            score = -1
+            if index is not None:
+                learned_model = pickle_var["learned_model"][index]
+                time_taken = pickle_var["time_taken"][index]
+                if m != "MILP":
+                    iteration = pickle_var["iterations"][index]
+                    num_nbr = pickle_var["num_neighbour"][index]
+                if learned_model:
+                    score = pickle_var["score"][index]
 
-                        recall, precision, accuracy, regret = -1, -1, -1, -1
-                        if learned_model:
-                            recall, precision, accuracy, regret, infeasiblity = evaluate_statistics(
-                                n,
-                                target_model,
-                                learned_model,
-                                global_context
-                                # args.sample_size,
-                                # seed,
-                            )
-                            f1_random, reg_random, inf_random = random_classifier(
-                                n, target_model, global_context, args.sample_size, seed
-                            )
-                        f1_score = 0
-                        if recall + precision != 0:
-                            f1_score = 2 * recall * precision / (recall + precision)
-                        labels = [
-                            True if l == 1 else False for l in pickle_cnd["labels"]
-                        ]
-                        if c == 0:
-                            c = 1
-                        pos_per_context = labels.count(True) / c
-                        neg_per_context = labels.count(False) / c
-
-                        filewriter.writerow(
-                            [
-                                n,
-                                m - num_soft,
-                                num_soft,
-                                seed,
-                                c,
-                                context_seed,
-                                args.num_pos,
-                                args.num_neg,
-                                pos_per_context,
-                                neg_per_context,
-                                method,
-                                score,
-                                recall,
-                                precision,
-                                accuracy,
-                                f1_score,
-                                regret,
-                                infeasiblity,
-                                f1_random,
-                                reg_random,
-                                inf_random,
-                                time_taken,
-                                t,
-                                p,
-                                iteration,
-                                bl,
-                            ]
-                        )
-                        bar.update(1)
-    csvfile.close()
+                # contexts = pickle_cnd["contexts"]
+                # global_context = set()
+                # for context in contexts:
+                #     global_context.update(context)
+                global_context = None
+                if learned_model:
+                    (
+                        recall,
+                        precision,
+                        accuracy,
+                        regret,
+                        infeasiblity,
+                    ) = evaluate_statistics(
+                        n, target_model, learned_model, global_context
+                    )
+                if recall + precision == 0:
+                    f1_score = 0
+                else:
+                    f1_score = 2 * recall * precision / (recall + precision)
+            return (
+                pos_per_context,
+                neg_per_context,
+                score,
+                recall,
+                precision,
+                accuracy,
+                f1_score,
+                regret,
+                infeasiblity,
+                time_taken,
+                t,
+                iteration,
+                num_nbr,
+            )
 
 
 def add_weights_cnf(model: MaxSatModel, k, num_soft, seed):
