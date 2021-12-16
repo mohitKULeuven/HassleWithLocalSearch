@@ -39,7 +39,7 @@ def generate(path, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
         if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
             model, n, m = cnf_to_model(path + cnf_file, h+s, 111)
             model = add_weights_cnf(model, m, s, seed)
-            param = f"_{cnf_file}_num_hard_{num_hard}_num_soft_{num_soft}_model_seed_{seed}"
+            param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{seed}"
             pickle_var = {}
             pickle_var["true_model"] = model
             if not os.path.exists("pickles/target_model"):
@@ -464,9 +464,9 @@ if __name__ == "__main__":
         "--method",
         nargs="*",
         type=str,
-        default=["walk_sat", "novelty", "novelty_plus", "adaptive_novelty_plus"],
+        default=["walk_sat"],
     )
-    CLI.add_argument("--cutoff", nargs="*", type=int, default=[2, 10, 60])
+    CLI.add_argument("--cutoff", nargs="*", type=int, default=[3600])
     CLI.add_argument("--noise", nargs="*", type=float, default=[0])
     CLI.add_argument("--pool", type=int, default=1)
 
