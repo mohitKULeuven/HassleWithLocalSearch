@@ -33,86 +33,50 @@ logger = logging.getLogger(__name__)
 _MIN_WEIGHT, _MAX_WEIGHT = 1, 100
 
 
-def generate(args):
-    iterations = (
-        len(os.listdir(args.path))
-        * len(args.per_soft)
-        * len(args.model_seeds)
-        * len(args.num_context)
-        * len(args.context_seeds)
-    )
-    bar = tqdm(total=iterations)
-    for cnf_file in os.listdir(args.path):
+def generate(path, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
+    for cnf_file in os.listdir(path):
         if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
-            model, n, m = cnf_to_model(args.path + cnf_file, args.num_constraints, 111)
-            for s in args.per_soft:
-                for seed in args.model_seeds:
-                    model = add_weights_cnf(model, m, int(m * s / 100), seed)
-                    param = f"_{cnf_file}_num_constraints_{args.num_constraints}_per_soft_{s}_model_seed_{seed}"
-                    pickle_var = {}
-                    pickle_var["true_model"] = model
-                    if not os.path.exists("pickles/target_model"):
-                        os.makedirs("pickles/target_model")
-                    pickle.dump(
-                        pickle_var,
-                        open("pickles/target_model/" + param + ".pickle", "wb"),
-                    )
-                    for c, context_seed in it.product(
-                        args.num_context, args.context_seeds
-                    ):
-                        tag = generate_contexts_and_data(
-                            n,
-                            model,
-                            c,
-                            args.num_pos,
-                            args.num_neg,
-                            args.neg_type,
-                            param,
-                            context_seed,
-                        )
-                        tqdm.write(tag)
-                        bar.update(1)
+            model, n, m = cnf_to_model(path + cnf_file, h+s, 111)
+            model = add_weights_cnf(model, m, s, seed)
+            param = f"_{cnf_file}_num_hard_{num_hard}_num_soft_{num_soft}_model_seed_{seed}"
+            pickle_var = {}
+            pickle_var["true_model"] = model
+            if not os.path.exists("pickles/target_model"):
+                os.makedirs("pickles/target_model")
+            pickle.dump(
+                pickle_var,
+                open("pickles/target_model/" + param + ".pickle", "wb"),
+            )
+            tag = generate_contexts_and_data(
+                n,
+                model,
+                nc,
+                num_pos,
+                num_neg,
+                neg_type,
+                param,
+                c_seed,
+            )
+            tqdm.write(tag)
 
 
-def learn(args):
-    if not args.filename:
-        args.filename = os.listdir(args.path)
-    iterations = (
-        len(args.filename)
-        * len(args.per_soft)
-        * len(args.model_seeds)
-        * len(args.num_context)
-        * len(args.context_seeds)
-        * len(args.method)
-        * len(args.cutoff)
-        * len(args.noise)
-    )
-    bar = tqdm("Progress", total=iterations, position=0)
-    for c, context_seed, method, t, p in it.product(
-        args.num_context, args.context_seeds, args.method, args.cutoff, args.noise
-    ):
-        for cnf_file in args.filename:
-            if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
-                for s in args.per_soft:
-                    for seed in args.model_seeds:
-                        n, m = cnf_param(args.path + cnf_file, args.num_constraints)
-                        param = f"_{cnf_file}_num_constraints_{args.num_constraints}_per_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_context_seed_{context_seed}"
-                        if args.neg_type:
-                            param = f"_{cnf_file}_num_constraints_{args.num_constraints}_per_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{args.num_pos}_num_neg_{args.num_neg}_neg_type_{args.neg_type}_context_seed_{context_seed}"
-                        if method == "MILP":
-                            try:
-                                learn_model_MILP(m, method, t, param, p)
-                                bar.update(1)
-                            except FileNotFoundError:
-                                print("FileNotFound: " + param)
-                                continue
-                        else:
-                            try:
-                                learn_model_sls(m, method, t, param, p, args.clause_len)
-                                bar.update(1)
-                            except FileNotFoundError:
-                                print("FileNotFound: " + param)
-                                continue
+def learn(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, method, t, p):
+    for cnf_file in os.listdir(path):
+        if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
+            n, m = cnf_param(args.path + cnf_file, h+s)
+            param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+            if method == "MILP":
+                try:
+                    learn_model_MILP(m, method, t, param, p, 1)
+                except FileNotFoundError:
+                    print("FileNotFound: " + param)
+                    continue
+            else:
+                try:
+                    learn_model_sls(m, method, t, param, p, 1)
+                except FileNotFoundError:
+                    print("FileNotFound: " + param)
+                    continue
 
 
 def evaluate(args, bl):
@@ -407,13 +371,84 @@ def represent_int(s):
         return False
 
 
+
+def main(args):
+    iterations = list(
+        it.product(
+            args.path,
+            args.num_hard,
+            args.num_soft,
+            args.model_seeds,
+            args.num_context,
+            args.num_pos,
+            args.num_neg,
+            args.neg_type,
+            args.context_seeds,
+            args.method,
+            args.cutoff,
+            args.noise,
+        )
+    )
+    pool = Pool(args.pool)
+    if args.function == "g":
+        pool.starmap(generate, [itr[:9] for itr in iterations])
+
+    elif args.function == "e":
+        folder_name = datetime.now().strftime("%d-%m-%y (%H:%M:%S.%f)")
+        os.makedirs(f"results/{folder_name}")
+        with open(f"results/{folder_name}/arguments.txt", "w") as f:
+            json.dump(args.__dict__, f, indent=2)
+        csvfile = open(f"results/{folder_name}/evaluation.csv", "w")
+        filewriter = csv.writer(csvfile, delimiter=",")
+        filewriter.writerow(
+            [
+                "num_vars",
+                "num_hard",
+                "num_soft",
+                "model_seed",
+                "num_context",
+                "num_pos",
+                "num_neg",
+                "neg_type",
+                "context_seed",
+                "method",
+                "max_cutoff",
+                "noise",
+                "use_context",
+                "pos_per_context",
+                "neg_per_context",
+                "score",
+                "recall",
+                "precision",
+                "accuracy",
+                "f1_score",
+                "regret",
+                "infeasiblity",
+                "time_taken",
+                "cutoff",
+                "iterations",
+                "neighbours",
+            ]
+        )
+        # print(iterations)
+        stats = pool.starmap(evaluate, iterations)
+        for i, s in enumerate(stats):
+            tmp = list(iterations[i])
+            tmp.extend(list(s))
+            filewriter.writerow(tmp)
+        csvfile.close()
+    else:
+        pool.starmap(learn, iterations)
+
+
+
 logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     CLI = argparse.ArgumentParser()
-    CLI.add_argument("--function", type=str, default="generate")
-    CLI.add_argument("--path", type=str, default="cnfs/3cnf_benchmark/")
-    CLI.add_argument("--filename", nargs="*", type=str, default=[])
-    CLI.add_argument("--per_soft", nargs="*", type=int, default=[50])
+    CLI.add_argument("--function", type=str, default="g")
+    CLI.add_argument("--path", type=str, default=["cnfs/3cnf_benchmark/"])
+    CLI.add_argument("--num_hard", nargs="*", type=int, default=[10])
+    CLI.add_argument("--num_soft", nargs="*", type=int, default=[10])
     CLI.add_argument(
         "--model_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
     )
@@ -421,11 +456,9 @@ if __name__ == "__main__":
     CLI.add_argument(
         "--context_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
     )
-    CLI.add_argument("--num_pos", type=int, default=2)
-    CLI.add_argument("--num_neg", type=int, default=2)
-    CLI.add_argument("--neg_type", type=str, default=None)
-    CLI.add_argument("--sample_size", type=int, default=1000)
-    CLI.add_argument("--num_constraints", type=int, default=20)
+    CLI.add_argument("--num_pos", nargs="*", type=int, default=[2])
+    CLI.add_argument("--num_neg", nargs="*", type=int, default=[2])
+    CLI.add_argument("--neg_type", nargs="*", type=str, default=["both"])
     CLI.add_argument(
         "--method",
         nargs="*",
@@ -433,16 +466,17 @@ if __name__ == "__main__":
         default=["walk_sat", "novelty", "novelty_plus", "adaptive_novelty_plus"],
     )
     CLI.add_argument("--cutoff", nargs="*", type=int, default=[2, 10, 60])
-    CLI.add_argument("--weighted", type=int, default=1)
     CLI.add_argument("--noise", nargs="*", type=float, default=[0])
-    CLI.add_argument("--clause_len", type=int, default=3)
+    CLI.add_argument("--pool", type=int, default=1)
     args = CLI.parse_args()
 
-    if args.function == "generate":
-        generate(args)
-
-    elif args.function == "learn":
-        learn(args)
-
-    elif args.function == "evaluate":
-        evaluate(args, bl=0)
+    main(args)
+    #
+    # if args.function == "generate":
+    #     generate(args)
+    #
+    # elif args.function == "learn":
+    #     learn(args)
+    #
+    # elif args.function == "evaluate":
+    #     evaluate(args, bl=0)

@@ -33,6 +33,30 @@ def MILPvsSLS(data):
     print(line_std_df)
 ##########################################
 
+
+########### for noisy data ##############
+def Noisy(args, data):
+    # tmp_data = data.loc[data["cutoff"] >= 600]
+    # print(tmp_data["method"])
+    # tmp_data = tmp_data.loc[(tmp_data["method"] == "walk_sat") | (tmp_data["method"] == "MILP")]
+    # # print(tmp_data["method"])
+    # milp_data = tmp_data.loc[(tmp_data["score"] > 0) & (tmp_data["method"] == "MILP")]
+    # milp_data = milp_data[["model_seed", "context_seed", "max_cutoff"]]
+    # tmp_data = pd.merge(tmp_data, milp_data, on=["model_seed", "context_seed", "max_cutoff"])
+    mean_table = pd.pivot_table(
+        data, args.aggregate, index=["neg_type"], aggfunc=np.mean
+    )
+    line_mean_df = pd.DataFrame(mean_table.to_records())
+    print(line_mean_df)
+    std_table = pd.pivot_table(
+        data, args.aggregate, index=["neg_type"], aggfunc=std_err
+    )
+    line_std_df = pd.DataFrame(std_table.to_records())
+    print(line_std_df)
+##########################################
+
+
+
 linestyles = ["s-", "o-", "^-", "D-", ">-"]
 
 ########### comparing all SLS methods ##############
@@ -248,8 +272,8 @@ if __name__ == "__main__":
             "regret",
         ],
     )
-    CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
-    CLI.add_argument("--folder", type=str, default="results/synthetic_all_methods/")
+    # CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
+    CLI.add_argument("--folder", type=str, default="results/neg_type/")
     CLI.add_argument("--file", type=str, default="evaluation")
     args = CLI.parse_args()
 
@@ -272,5 +296,6 @@ if __name__ == "__main__":
     data["regret"] = data["regret"] / 100
     data["score"] = data["score"] / 100
 
-    compareModelsLearned(args, data)
-    MILPvsSLS(data)
+    Noisy(args, data)
+    # compareModelsLearned(args, data)
+    # MILPvsSLS(data)

@@ -404,7 +404,7 @@ if __name__ == "__main__":
     CLI.add_argument("--weighted", type=int, default=1)
     CLI.add_argument("--naive", type=int, default=0)
     CLI.add_argument("--clause_len", type=int, default=0)
-    CLI.add_argument("--pool", type=int, default=1)
+    CLI.add_argument("--pool", type=int, default=10)
     CLI.add_argument("--context", nargs="*", type=int, default=[1])
 
     args = CLI.parse_args()
