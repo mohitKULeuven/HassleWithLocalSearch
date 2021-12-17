@@ -68,131 +68,127 @@ def generate(path, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
             tqdm.write(tag)
 
 
-def learn(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, method, t, p):
-    for cnf_file in os.listdir(path):
-        if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
-            adaptive_seed=seed
-            found = False
-            while not found:
-                if adaptive_seed-seed>100:
-                    break
-                n, m = cnf_param(path + cnf_file, h+s)
-                param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{adaptive_seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
-                if os.path.exists("pickles/contexts_and_data/" + param + ".pickle"):
-                    found = True
-                adaptive_seed += 1
-            if method == "MILP":
-                try:
-                    learn_model_MILP(m, method, t, param, p, 1)
-                except FileNotFoundError:
-                    print("FileNotFound: " + param)
-                    continue
-            else:
-                try:
-                    learn_model_sls(m, method, t, param, p, 1)
-                except FileNotFoundError:
-                    print("FileNotFound: " + param)
-                    continue
+def learn(cnf_file, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, method, t, p):
+    path = "cnfs/3cnf_benchmark/"
+    adaptive_seed=seed
+    found = False
+    while not found:
+        if adaptive_seed-seed>100:
+            break
+        n, m = cnf_param(path + cnf_file, h+s)
+        param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{adaptive_seed}_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
+        if os.path.exists("pickles/contexts_and_data/" + param + ".pickle"):
+            found = True
+        adaptive_seed += 1
+    if method == "MILP":
+        try:
+            learn_model_MILP(m, method, t, param, p, 1)
+        except FileNotFoundError:
+            print("FileNotFound: " + param)
+    else:
+        try:
+            learn_model_sls(m, method, t, param, p, 1)
+        except FileNotFoundError:
+            print("FileNotFound: " + param)
 
 
-def evaluate(path, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p):
-    for cnf_file in os.listdir(path):
-        if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
-            adaptive_seed = seed
-            n, _ = cnf_param(path + cnf_file, h+s)
-            max_t = 3600
-            found = False
-            while not found:
-                if adaptive_seed-seed>100:
-                    break
-                param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{adaptive_seed}"
-                tag_cnd = (
-                        param
-                        + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
-                )
-                if neg_type:
-                    tag_cnd = (
-                            param
-                            + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
-                    )
-                if not os.path.exists("pickles/contexts_and_data/" + tag_cnd + ".pickle"):
-                    adaptive_seed += 1
-                    continue
-                found = True
-                target_model = pickle.load(
-                    open("pickles/target_model/" + param + ".pickle", "rb")
-                )["true_model"]
-                pickle_cnd = pickle.load(
-                    open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
-                )
-
-            if p == 0:
-                p = int(p)
-            tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
-            # if args.naive == 1:
-            #     tag += "_naive"
-            # if bl == 1:
-            #     tag += "_bl"
-            pickle_var = pickle.load(
-                open("pickles/learned_model/" + tag + ".pickle", "rb")
+def evaluate(cnf_file, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p):
+    path="cnfs/3cnf_benchmark/"
+    adaptive_seed = seed
+    n, _ = cnf_param(path + cnf_file, h+s)
+    max_t = 3600
+    found = False
+    while not found:
+        if adaptive_seed-seed>100:
+            break
+        param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{adaptive_seed}"
+        tag_cnd = (
+                param
+                + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_context_seed_{context_seed}"
+        )
+        if neg_type:
+            tag_cnd = (
+                    param
+                    + f"_num_context_{c}_num_pos_{num_pos}_num_neg_{num_neg}_neg_type_{neg_type}_context_seed_{context_seed}"
             )
-            if c == 0:
-                c = 1
-            labels = [True if l == 1 else False for l in pickle_cnd["labels"]]
-            pos_per_context = labels.count(True) / c
-            neg_per_context = labels.count(False) / c
-            recall, precision, accuracy = (-1, -1, -1)
-            regret, infeasiblity, f1_score = (-1, -1, -1)
-            # print("time taken: ", pickle_var["time_taken"])
-            index = get_learned_model(pickle_var["time_taken"], max_t, t)
-            # print(t, index)
-            time_taken = t
-            iteration = 0
-            num_nbr = 0
-            score = -1
-            if index is not None:
-                learned_model = pickle_var["learned_model"][index]
-                time_taken = pickle_var["time_taken"][index]
-                if m != "MILP":
-                    iteration = pickle_var["iterations"][index]
-                    num_nbr = pickle_var["num_neighbour"][index]
-                if learned_model:
-                    score = pickle_var["score"][index]
+        if not os.path.exists("pickles/contexts_and_data/" + tag_cnd + ".pickle"):
+            adaptive_seed += 1
+            continue
+        found = True
+        target_model = pickle.load(
+            open("pickles/target_model/" + param + ".pickle", "rb")
+        )["true_model"]
+        pickle_cnd = pickle.load(
+            open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
+        )
 
-                # contexts = pickle_cnd["contexts"]
-                # global_context = set()
-                # for context in contexts:
-                #     global_context.update(context)
-                global_context = None
-                if learned_model:
-                    (
-                        recall,
-                        precision,
-                        accuracy,
-                        regret,
-                        infeasiblity,
-                    ) = evaluate_statistics(
-                        n, target_model, learned_model, global_context
-                    )
-                if recall + precision == 0:
-                    f1_score = 0
-                else:
-                    f1_score = 2 * recall * precision / (recall + precision)
-            return (
-                pos_per_context,
-                neg_per_context,
-                score,
+    if p == 0:
+        p = int(p)
+    tag = tag_cnd + f"_method_{m}_cutoff_{max_t}_noise_{p}"
+    # if args.naive == 1:
+    #     tag += "_naive"
+    # if bl == 1:
+    #     tag += "_bl"
+    pickle_var = pickle.load(
+        open("pickles/learned_model/" + tag + ".pickle", "rb")
+    )
+    if c == 0:
+        c = 1
+    labels = [True if l == 1 else False for l in pickle_cnd["labels"]]
+    pos_per_context = labels.count(True) / c
+    neg_per_context = labels.count(False) / c
+    recall, precision, accuracy = (-1, -1, -1)
+    regret, infeasiblity, f1_score = (-1, -1, -1)
+    # print("time taken: ", pickle_var["time_taken"])
+    index = get_learned_model(pickle_var["time_taken"], max_t, t)
+    # print(t, index)
+    time_taken = t
+    iteration = 0
+    num_nbr = 0
+    score = -1
+    if index is not None:
+        learned_model = pickle_var["learned_model"][index]
+        time_taken = pickle_var["time_taken"][index]
+        if m != "MILP":
+            iteration = pickle_var["iterations"][index]
+            num_nbr = pickle_var["num_neighbour"][index]
+        if learned_model:
+            score = pickle_var["score"][index]
+
+        # contexts = pickle_cnd["contexts"]
+        # global_context = set()
+        # for context in contexts:
+        #     global_context.update(context)
+        global_context = None
+        if learned_model:
+            (
                 recall,
                 precision,
                 accuracy,
-                f1_score,
                 regret,
                 infeasiblity,
-                time_taken,
-                t,
-                iteration,
-                num_nbr,
+            ) = evaluate_statistics(
+                n, target_model, learned_model, global_context
             )
+        if recall + precision == 0:
+            f1_score = 0
+        else:
+            f1_score = 2 * recall * precision / (recall + precision)
+    return (
+        pos_per_context,
+        neg_per_context,
+        score,
+        recall,
+        precision,
+        accuracy,
+        f1_score,
+        regret,
+        infeasiblity,
+        time_taken,
+        t,
+        iteration,
+        num_nbr,
+    )
 
 
 def add_weights_cnf(model: MaxSatModel, k, num_soft, seed):
@@ -326,7 +322,7 @@ def represent_int(s):
 def main(args):
     iterations = list(
         it.product(
-            args.path,
+            args.file,
             args.num_hard,
             args.num_soft,
             args.model_seeds,
@@ -353,7 +349,7 @@ def main(args):
         filewriter = csv.writer(csvfile, delimiter=",")
         filewriter.writerow(
             [
-                "num_vars",
+                "file",
                 "num_hard",
                 "num_soft",
                 "model_seed",
@@ -365,7 +361,6 @@ def main(args):
                 "method",
                 "max_cutoff",
                 "noise",
-                "use_context",
                 "pos_per_context",
                 "neg_per_context",
                 "score",
@@ -397,7 +392,7 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     CLI = argparse.ArgumentParser()
     CLI.add_argument("--function", type=str, default="g")
-    CLI.add_argument("--path", type=str, default=["cnfs/3cnf_benchmark/"])
+    CLI.add_argument("--file", type=str, default=["uf20-01.cnf","uf20-02.cnf","uf20-03.cnf","uf20-04.cnf","uf20-05.cnf"])
     CLI.add_argument("--num_hard", nargs="*", type=int, default=[10])
     CLI.add_argument("--num_soft", nargs="*", type=int, default=[10])
     CLI.add_argument(
