@@ -35,37 +35,36 @@ logger = logging.getLogger(__name__)
 _MIN_WEIGHT, _MAX_WEIGHT = 1, 100
 
 
-def generate(path, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
-    for cnf_file in os.listdir(path):
-        if cnf_file.endswith(".wcnf") or cnf_file.endswith(".cnf"):
-            adaptive_seed = seed
-            tag = False
-            while not tag:
-                if adaptive_seed-seed>100:
-                    break
-                model, n, m = cnf_to_model(path + cnf_file, h+s, adaptive_seed)
-                model = add_weights_cnf(model, m, s, adaptive_seed)
-                param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{adaptive_seed}"
-                pickle_var = {}
-                pickle_var["true_model"] = model
-                if not os.path.exists("pickles/target_model"):
-                    os.makedirs("pickles/target_model")
-                pickle.dump(
-                    pickle_var,
-                    open("pickles/target_model/" + param + ".pickle", "wb"),
-                )
-                tag = generate_contexts_and_data(
-                    n,
-                    model,
-                    nc,
-                    num_pos,
-                    num_neg,
-                    neg_type,
-                    param,
-                    c_seed,
-                )
-                adaptive_seed += 1
-            tqdm.write(tag)
+def generate(cnf_file, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):
+    path = "cnfs/3cnf_benchmark/"
+    adaptive_seed = seed
+    tag = False
+    while not tag:
+        if adaptive_seed-seed>100:
+            break
+        model, n, m = cnf_to_model(path + cnf_file, h+s, adaptive_seed)
+        model = add_weights_cnf(model, m, s, adaptive_seed)
+        param = f"_{cnf_file}_num_hard_{h}_num_soft_{s}_model_seed_{adaptive_seed}"
+        pickle_var = {}
+        pickle_var["true_model"] = model
+        if not os.path.exists("pickles/target_model"):
+            os.makedirs("pickles/target_model")
+        pickle.dump(
+            pickle_var,
+            open("pickles/target_model/" + param + ".pickle", "wb"),
+        )
+        tag = generate_contexts_and_data(
+            n,
+            model,
+            nc,
+            num_pos,
+            num_neg,
+            neg_type,
+            param,
+            c_seed,
+        )
+        adaptive_seed += 1
+    tqdm.write(tag)
 
 
 def learn(cnf_file, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, method, t, p):
