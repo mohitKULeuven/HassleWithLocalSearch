@@ -391,15 +391,15 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     CLI = argparse.ArgumentParser()
     CLI.add_argument("--function", type=str, default="g")
-    CLI.add_argument("--file", type=str, default=["uf20-01.cnf","uf20-02.cnf","uf20-03.cnf","uf20-04.cnf","uf20-05.cnf"])
+    CLI.add_argument("--file", nargs="*", type=str, default=["uf20-01.cnf"])
     CLI.add_argument("--num_hard", nargs="*", type=int, default=[10])
     CLI.add_argument("--num_soft", nargs="*", type=int, default=[10])
     CLI.add_argument(
-        "--model_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
+        "--model_seeds", nargs="*", type=int, default=[111]
     )
-    CLI.add_argument("--num_context", nargs="*", type=int, default=[250, 500, 1000])
+    CLI.add_argument("--num_context", nargs="*", type=int, default=[250])
     CLI.add_argument(
-        "--context_seeds", nargs="*", type=int, default=[111, 222, 333, 444, 555]
+        "--context_seeds", nargs="*", type=int, default=[111]
     )
     CLI.add_argument("--num_pos", nargs="*", type=int, default=[2])
     CLI.add_argument("--num_neg", nargs="*", type=int, default=[2])
