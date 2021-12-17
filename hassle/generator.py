@@ -65,7 +65,7 @@ def generate_contexts_and_data(
         # print(opt)
         start = time.time()
         while num_context>0:
-            print(num_context)
+            # print(num_context)
             if time.time()-start > 20:
                 return False
             context, data_seed = random_context(n, rng)
