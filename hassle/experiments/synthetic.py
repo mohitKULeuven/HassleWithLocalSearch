@@ -52,7 +52,7 @@ def learn(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, m, t, p, u
             found = True
         seed+=1
     if m == "MILP":
-        learn_model_MILP(h + s, m, t, param, p, use_context)
+        learn_model_MILP(n, h + s, m, t, param, p, use_context)
     else:
         learn_model_sls(h + s, m, t, param, p, use_context)
     # pbar.update(1)
@@ -201,7 +201,7 @@ def learn_model_sls(num_constraints, method, cutoff, param, p, use_context=1, na
     )
 
 
-def learn_model_MILP(num_constraints, method, cutoff, param, p, use_context=1):
+def learn_model_MILP(n, num_constraints, method, cutoff, param, p, use_context=1):
     pickle_var = pickle.load(
         open("pickles/contexts_and_data/" + param + ".pickle", "rb")
     )
@@ -238,7 +238,7 @@ def learn_model_MILP(num_constraints, method, cutoff, param, p, use_context=1):
         for k in range(data.shape[0]):
             instance = data[k, :]
             label = labels[k]
-            learned_label = label_instance(learned_model, instance, contexts[k])
+            learned_label = label_instance(n, learned_model, instance, contexts[k])
             if label == learned_label:
                 score += 1
     pickle_var = {}
@@ -270,7 +270,7 @@ def regret(n, target_model, learned_model, context):
         if w is None:
             learned_feasible_model.append((w, clause))
     sol, cost = solve_weighted_max_sat(n, target_model, context, 1)
-    opt_val = get_value(target_model, sol, context)
+    opt_val = get_value(n, target_model, sol, context)
     avg_regret = 0
     learned_sols, cost = solve_weighted_max_sat(
         n, learned_feasible_model, context, 1000
@@ -278,7 +278,7 @@ def regret(n, target_model, learned_model, context):
     if len(learned_sols) == 0:
         return -1
     for learned_sol in learned_sols:
-        learned_opt_val = get_value(target_model, learned_sol, context)
+        learned_opt_val = get_value(n, target_model, learned_sol, context)
         if learned_opt_val is None or learned_opt_val > opt_val:
             raise Exception("error: calculating regret")
         regret = (opt_val - learned_opt_val) / opt_val

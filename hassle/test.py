@@ -157,40 +157,49 @@ def example2():
         {2, 3},
     ]
 
+def test_model():
+    clause1 = (1,2,3)
+    clause2 = (1,)
+    clause3 = (2,-3)
+    model1=[(None, clause1),(1, clause2),(1, clause3)]
+    context=[(-1,-2)]
+    sol=solve_weighted_max_sat(3,model1,context,5)
+    assert len(sol[0])==1
+
 def example3():
     n=3
     clause1 = (1,2,3)
     clause2 = (1,)
     clause3 = (2,-3)
-    model1=[(None, clause1),(1, clause2),(1, clause3)]
-    context=(-1,-2)
-    sol=solve_weighted_max_sat(3,model1,context,5)
-    assert len(sol[0])==1
+    model1 = [(None, clause1),(1, clause2),(1, clause3)]
+    context = [(-1,-2)]
+    sol = solve_weighted_max_sat(3,model1,context,5)
+    assert len(sol[0]) == 1
 
-    data=sol[0]
-    labels=[True]*len(sol[0])
-    contexts = [{-1, -2}] * len(labels)
+    data = sol[0]
+    labels = [True]*len(sol[0])
+    contexts = [[{-1, -2}]] * len(labels)
 
     data.append([False, False, False])
     labels.append(False)
-    contexts.append(set())
+    contexts.append(None)
     data.append([True, True, False])
     labels.append(True)
-    contexts.append(set())
+    contexts.append(None)
     data.append([True, True, True])
     labels.append(True)
-    contexts.append({3})
+    contexts.append([{3}])
     data.append([True, True, False])
     labels.append(False)
-    contexts.append({3})
+    contexts.append([{3}])
 
-    data=np.array(data)
-    labels=np.array(labels)
+    data = np.array(data)
+    labels = np.array(labels)
 
 
     lmodel1 = learn_weighted_max_sat(3, 3, data, labels, contexts, "walk_sat", "")
 
-    contexts = [set()] * len(labels)
+    contexts = [None] * len(labels)
     lmodel2 = learn_weighted_max_sat(3, 3, data, labels, contexts, "walk_sat", "")
     print(data, labels)
     print(lmodel1)
@@ -225,7 +234,7 @@ def context_relevance(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed
         open("pickles/contexts_and_data/" + tag_cnd + ".pickle", "rb")
     )
     sol, cost = solve_weighted_max_sat(n, target_model, None, 1)
-    opt_val = get_value(target_model, sol, None)
+    opt_val = get_value(n, target_model, sol, None)
     count=0
     # print(target_model)
     # print(pickle_cnd["data"], pickle_cnd["labels"])
@@ -234,11 +243,12 @@ def context_relevance(n, h, s, seed, c, num_pos, num_neg, neg_type, context_seed
         sol, cost = solve_weighted_max_sat(n, target_model, c, 1)
         # print(sol,cost)
         # print(target_model, sol, c)
-        if opt_val == get_value(target_model, sol, c):
-            count+=1
+        if opt_val == get_value(n, target_model, sol, c):
+            count += 1
     return count, len(pickle_cnd["contexts"])
 
 
 if __name__ == "__main__":
-    print(context_relevance(5,2,2,111,25,2,2,"both",111))
-    # example3()
+    test_model()
+    # print(context_relevance(5,2,2,111,25,2,2,"both",111))
+    example3()

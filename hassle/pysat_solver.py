@@ -7,7 +7,7 @@ Created on Wed Oct 16 12:49:04 2019
 """
 
 from typing import Optional
-from pysat.formula import WCNF
+from pysat.formula import WCNF, CNF
 from pysat.examples.rc2 import RC2
 import numpy as np
 import csv
@@ -16,8 +16,18 @@ import copy
 from .type_def import MaxSatModel, Clause, Instance, Context
 
 
+def add_context(model, context):
+    if context:
+        logic_context=CNF()
+        for conj in context:
+            logic_context.append([-1*c for c in conj])
+        logic_context = logic_context.negate()
+        for clause in logic_context.clauses:
+            model.append(list(map(int, list(clause))), weight=None)
+    return model
+
 def solve_weighted_max_sat(
-    n: int, model: MaxSatModel, context: Clause, num_sol, prev_sol=[]
+    n: int, model: MaxSatModel, context, num_sol, prev_sol=[]
 ):
     """
     Solves a MaxSatModel and tries to return num_sol optimal solutions
@@ -28,11 +38,12 @@ def solve_weighted_max_sat(
         # c.append(list(map(int, list(clause))), weight=w)
         if w != 0 and len(clause) > 0:
             c.append(list(map(int, list(clause))), weight=w)
-    if context and len(context) > 0:
-        # c.append(list(map(int, list(context))), weight=None)
-        # c.append(list(map(int, list(context))))
+    c = add_context(c, context)
 
-        c.hard.extend([[int(c)] for c in context])
+    # print(c.hard)
+    # print(c.soft)
+    # if context and len(context) > 0:
+    #     c.hard.extend([[int(c)] for c in context])
     s = RC2(c)
     sol = []
     cst = -1
@@ -57,14 +68,15 @@ def solve_weighted_max_sat(
 
 
 def solve_weighted_max_sat_file(
-    wcnf_file, context: Clause, num_sol, prev_sol=[]
+    wcnf_file, context, num_sol, prev_sol=[]
 ) -> Optional[Instance]:
     """
     Solves a MaxSatModel file and tries to return num_sol optimal solutions
     """
     wcnf = WCNF(wcnf_file)
-    if len(context) > 0:
-        wcnf.hard.extend(list(map(int, list(context))), weight=None)
+    wcnf = add_context(wcnf, context)
+    # if len(context) > 0:
+    #     wcnf.hard.extend(list(map(int, list(context))), weight=None)
     s = RC2(wcnf)
     model = []
     cst = -1
@@ -79,25 +91,48 @@ def solve_weighted_max_sat_file(
     return model
 
 
-def get_value(model: MaxSatModel, instance: Instance, context=None) -> Optional[float]:
+
+def get_value(n, model: MaxSatModel, instance: Instance, context=None) -> Optional[float]:
     """
     Returns the weighted value of an instance
     """
-    model = copy.deepcopy(model)
-    if context is not None and len(context) > 0:
-        for c in context:
-            model.append((None, (c,)))
-    value = 0
-    for weight, clause in model:
+    # model = copy.deepcopy(model)
+    c = WCNF()
+    c.nv = n
+    for w, clause in model:
+        if w != 0 and len(clause) > 0:
+            c.append(list(map(int, list(clause))), weight=w)
+    c = add_context(c, context)
+    # if context is not None and len(context) > 0:
+    #     for c in context:
+    #         model.append((None, (c,)))
+    # model = add_context(model, context)
+
+    for clause in c.hard:
         covered = len(clause) > 0 and any(
             not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
         )
-        if weight is None:
-            if not covered:
-                return None
-        else:
-            if covered:
-                value += weight
+        if not covered:
+            return None
+
+    value = 0
+    for i, clause in enumerate(c.soft):
+        covered = len(clause) > 0 and any(
+            not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
+        )
+        if covered:
+            value += c.wght[i]
+
+    # for weight, clause in model:
+    #     covered = len(clause) > 0 and any(
+    #         not instance[abs(i) - 1] if i < 0 else instance[i - 1] for i in clause
+    #     )
+    #     if weight is None:
+    #         if not covered:
+    #             return None
+    #     else:
+    #         if covered:
+    #             value += weight
     return value
 
 
@@ -119,30 +154,30 @@ def get_cost(model: MaxSatModel, instance: Instance) -> Optional[float]:
     return value
 
 
-def label_instance(model: MaxSatModel, instance: Instance, context: Context) -> bool:
-    value = get_value(model, instance, context)
+def label_instance(n, model: MaxSatModel, instance: Instance, context: Context) -> bool:
+    value = get_value(n, model, instance, context)
     if value is None:
         return False
     best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
     if cst < 0:
         return False
-    best_value = get_value(model, best_instance, context)
+    best_value = get_value(n, model, best_instance, context)
     return value == best_value
 
 
-def is_infeasible(model: MaxSatModel, instance: Instance, context: Context) -> bool:
-    value = get_value(model, instance, context)
+def is_infeasible(n, model: MaxSatModel, instance: Instance, context: Context) -> bool:
+    value = get_value(n, model, instance, context)
     if value is None:
         return True
     return False
 
 
-def is_suboptimal(model: MaxSatModel, instance: Instance, context: Context) -> bool:
-    value = get_value(model, instance, context)
+def is_suboptimal(n, model: MaxSatModel, instance: Instance, context: Context) -> bool:
+    value = get_value(n, model, instance, context)
     if value is None:
         return False
     best_instance, cst = solve_weighted_max_sat(len(instance), model, context, 1)
-    best_value = get_value(model, best_instance, context)
+    best_value = get_value(n, model, best_instance, context)
     return not value == best_value
 
 

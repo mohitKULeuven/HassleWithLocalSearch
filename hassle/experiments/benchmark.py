@@ -81,7 +81,7 @@ def learn(cnf_file, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, met
         adaptive_seed += 1
     if method == "MILP":
         try:
-            learn_model_MILP(m, method, t, param, p, 1)
+            learn_model_MILP(n, m, method, t, param, p, 1)
         except FileNotFoundError:
             print("FileNotFound: " + param)
     else:
@@ -138,7 +138,7 @@ def evaluate(cnf_file, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, 
     neg_per_context = labels.count(False) / c
     recall, precision, accuracy = (-1, -1, -1)
     regret, infeasiblity, f1_score = (-1, -1, -1)
-    # print("time taken: ", pickle_var["time_taken"])
+    print("time taken: ", pickle_var["time_taken"])
     index = get_learned_model(pickle_var["time_taken"], max_t, t)
     # print(t, index)
     time_taken = t
@@ -154,11 +154,11 @@ def evaluate(cnf_file, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, 
         if learned_model:
             score = pickle_var["score"][index]
 
-        # contexts = pickle_cnd["contexts"]
-        # global_context = set()
-        # for context in contexts:
-        #     global_context.update(context)
-        global_context = None
+        contexts = pickle_cnd["contexts"]
+        global_context = []
+        for context in contexts:
+            global_context.append(context)
+        # global_context = None
         if learned_model:
             (
                 recall,
@@ -246,16 +246,16 @@ def random_classifier(n, target_model, context, sample_size, seed):
         if list(instance) in learned_sols:
             continue
         learned_sols.append(list(instance))
-        if label_instance(target_model, instance, context):
+        if label_instance(n, target_model, instance, context):
             tp += 1
     recall = tp * 100 / sample_size
 
     sol, cost = solve_weighted_max_sat(n, target_model, context, 1)
-    opt_val = get_value(target_model, sol, context)
+    opt_val = get_value(n, target_model, sol, context)
     avg_regret = 0
     infeasible = 0
     for learned_sol in learned_sols:
-        learned_opt_val = get_value(target_model, np.array(learned_sol), context)
+        learned_opt_val = get_value(n, target_model, np.array(learned_sol), context)
         if not learned_opt_val:
             infeasible += 1
         else:
@@ -335,6 +335,7 @@ def main(args):
             args.noise,
         )
     )
+    print(iterations)
     pool = Pool(args.pool)
     if args.function == "g":
         pool.starmap(generate, [itr[:9] for itr in iterations])

@@ -61,7 +61,7 @@ def generate_contexts_and_data(
         pickle_var["labels"].extend(labels)
     else:
         sol=solve_weighted_max_sat(n, model, None, 1)[0]
-        opt_val = get_value(model, sol, None)
+        opt_val = get_value(n, model, sol, None)
         # print(opt)
         start = time.time()
         while num_context>0:
@@ -73,7 +73,7 @@ def generate_contexts_and_data(
                 continue
 
             sol, cst=solve_weighted_max_sat(n,model,context,1)
-            if not sol or opt_val==get_value(model, sol, None):
+            if not sol or opt_val==get_value(n, model, sol, None):
                 continue
             data, labels = random_data(
                 n, model, context, num_pos, num_neg, neg_type, data_seed
@@ -264,7 +264,7 @@ def random_infeasible(n, model: MaxSatModel, context: Context, num_neg, seed):
             instance[abs(i) - 1] = i > 0
         if list(instance) in data:
             continue
-        if is_infeasible(model, instance, context):
+        if is_infeasible(n, model, instance, context):
             data.append(list(instance))
             labels.append(-1)
             if len(data) >= num_neg:
@@ -283,7 +283,7 @@ def random_suboptimal(n, model: MaxSatModel, context: Context, num_neg, seed):
             instance[abs(i) - 1] = i > 0
         if list(instance) in data:
             continue
-        if is_suboptimal(model, instance, context):
+        if is_suboptimal(n, model, instance, context):
             data.append(list(instance))
             labels.append(0)
             if len(data) >= num_neg:

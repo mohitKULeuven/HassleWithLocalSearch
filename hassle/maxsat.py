@@ -58,7 +58,7 @@ class MaxSAT:
                 neighbours = neighbours_pos_inf(self, example, context, rng, w)
             else:
                 neighbours = neighbours_pos_sub(self, example, context, rng, w)
-        elif get_value(self.maxSatModel(), example, context) is None:
+        elif get_value(self.n, self.maxSatModel(), example, context) is None:
             neighbours = neighbours_inf(self, example, context, clause_len, rng)
         else:
             neighbours = neighbours_sub(self, example, context, clause_len, rng, w)
@@ -149,7 +149,7 @@ class MaxSAT:
         return score, correct_examples
 
     def is_correct(self, example, label, context=None, inf=None, optimum=-1):
-        val = get_value(self.maxSatModel(), example, context)
+        val = get_value(self.n, self.maxSatModel(), example, context)
         # self.print_model()
         # print(example, context)
         if val is None:
@@ -199,7 +199,7 @@ class MaxSAT:
         sol, cost = solve_weighted_max_sat(self.n, self.maxSatModel(), context, 1)
         if not sol:
             return None
-        return get_value(self.maxSatModel(), sol, context)
+        return get_value(self.n, self.maxSatModel(), sol, context)
 
     def is_same(self, model):
         c1, w1, l1 = zip(*sorted(zip(self.c, self.w, self.l)))
