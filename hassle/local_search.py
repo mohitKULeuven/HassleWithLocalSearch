@@ -226,7 +226,7 @@ def learn_weighted_max_sat(
     clause_len: int,
     data: np.ndarray,
     labels: np.ndarray,
-    contexts,
+    contexts: List[Clause],
     method,
     param,
     inf=None,

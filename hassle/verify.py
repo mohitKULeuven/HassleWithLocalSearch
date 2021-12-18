@@ -44,7 +44,7 @@ def convert_to_logic(manager: SddManager, n: int, model: MaxSatModel, context: C
     if cst == -1:
         return None
     else:
-        value = get_value(n, model, best_solution, context)
+        value = get_value(model, best_solution, context)
         hard_constraints = [c for w, c in model if not w]
 
         hard_result = manager.true()
@@ -139,8 +139,8 @@ def get_recall_precision_sampling(
         instance = rng.rand(n) > 0.5
         for i in rng.choice(list(context), 1):
             instance[abs(i) - 1] = i > 0
-        if label_instance(n, true_model, instance, context) == label_instance(
-            n, learned_model, instance, context
+        if label_instance(true_model, instance, context) == label_instance(
+            learned_model, instance, context
         ):
             acc += 1
 
@@ -168,7 +168,7 @@ def get_tp_percentage_sampling(
     else:
         sample = tmp_data
     for example in sample:
-        if label_instance(n, learned_model, example, context):
+        if label_instance(learned_model, example, context):
             tp += 1
     percent = tp * 100 / len(sample)
     return percent
