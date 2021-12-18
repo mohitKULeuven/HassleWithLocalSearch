@@ -163,12 +163,12 @@ def learn_model_sls(num_constraints, method, cutoff, param, p, use_context=1, na
         param+="_noContext"
     if naive == 1:
         param += "_naive"
-    if os.path.exists("pickles/learned_model/" + param + ".pickle"):
-        pickle_var = pickle.load(
-            open("pickles/learned_model/" + param + ".pickle", "rb")
-        )
-        tqdm.write("Exists: " + param + "\n")
-        return pickle_var["learned_model"], pickle_var["time_taken"]
+    # if os.path.exists("pickles/learned_model/" + param + ".pickle"):
+    #     pickle_var = pickle.load(
+    #         open("pickles/learned_model/" + param + ".pickle", "rb")
+    #     )
+    #     tqdm.write("Exists: " + param + "\n")
+    #     return pickle_var["learned_model"], pickle_var["time_taken"]
 
     data = np.array(pickle_var["data"])
     labels = np.array(pickle_var["labels"])
@@ -176,7 +176,8 @@ def learn_model_sls(num_constraints, method, cutoff, param, p, use_context=1, na
     if use_context==0:
         contexts=[None]*len(labels)
 
-    inf = [True if l == -1 else False for l in labels]
+    # inf = [True if l == -1 else False for l in labels]
+    inf = None
     labels = np.array([True if l == 1 else False for l in labels])
 
     if p != 0:
