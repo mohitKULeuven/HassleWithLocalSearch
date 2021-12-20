@@ -32,9 +32,9 @@ CLI.add_argument(
     nargs="*",
     type=str,
     default=[
-        "results/num_vars/",
-        "results/num_soft/",
-        "results/num_hard/",
+        "results/num_vars_v2/",
+        "results/num_soft_v2/",
+        "results/num_hard_v2/",
     ],
 )
 CLI.add_argument("--file", type=str, default="evaluation")

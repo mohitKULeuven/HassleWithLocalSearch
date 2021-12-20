@@ -35,7 +35,7 @@ def MILPvsSLS(data):
 
 
 ########### for noisy data ##############
-def Noisy(args, data):
+def aggr(args, data, stat):
     # tmp_data = data.loc[data["cutoff"] >= 600]
     # print(tmp_data["method"])
     # tmp_data = tmp_data.loc[(tmp_data["method"] == "walk_sat") | (tmp_data["method"] == "MILP")]
@@ -44,12 +44,12 @@ def Noisy(args, data):
     # milp_data = milp_data[["model_seed", "context_seed", "max_cutoff"]]
     # tmp_data = pd.merge(tmp_data, milp_data, on=["model_seed", "context_seed", "max_cutoff"])
     mean_table = pd.pivot_table(
-        data, args.aggregate, index=["neg_type"], aggfunc=np.mean
+        data, args.aggregate, index=[stat], aggfunc=np.mean
     )
     line_mean_df = pd.DataFrame(mean_table.to_records())
     print(line_mean_df)
     std_table = pd.pivot_table(
-        data, args.aggregate, index=["neg_type"], aggfunc=std_err
+        data, args.aggregate, index=[stat], aggfunc=std_err
     )
     line_std_df = pd.DataFrame(std_table.to_records())
     print(line_std_df)
@@ -92,7 +92,7 @@ def compareSLS_synthetic(args, data):
             #     values=stats,
             # )
 
-            mins = [6, 60, 600, 1200, 1800, 2400, 3000, 3600]
+            mins = [600, 1200, 1800, 2400, 3000, 3600]
             line_mean_df.plot(rot=0, ax=ax[i, j], style=linestyles)
             ax[i, j].get_legend().remove()
             ax[i, j].set_xticks(mins)
@@ -113,8 +113,8 @@ def compareSLS_synthetic(args, data):
             # if stats == "regret":
             #     ax[i, j].set_ylim(0.05, 0.15)
             #     ax[i, j].set_yticks([0.06, 0.1, 0.14])
-            # elif stats == "infeasiblity":
-                # ax[i, j].set_ylim(0, 0.25)
+            if stats == "infeasiblity":
+                ax[i, j].set_ylim(0.1, 0.4)
             handles, labels = ax[i, j].get_legend_handles_labels()
     for i, l in enumerate(labels):
         if l == "adaptive_novelty_plus":
@@ -130,8 +130,8 @@ def compareSLS_synthetic(args, data):
         handles=handles,
         labels=labels,
         loc="upper center",
-        ncol=3,
-        bbox_to_anchor=(0.35, 1.0, 0.2, 0),
+        ncol=4,
+        # bbox_to_anchor=(0.35, 1.0, 0.2, 0),
     )
     plt.savefig(
         args.folder + "synthetic_" + args.file + ".png",
@@ -272,8 +272,8 @@ if __name__ == "__main__":
             "regret",
         ],
     )
-    # CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
-    CLI.add_argument("--folder", type=str, default="results/neg_type/")
+    CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
+    CLI.add_argument("--folder", type=str, default="results/benchmark_v3/")
     CLI.add_argument("--file", type=str, default="evaluation")
     args = CLI.parse_args()
 
@@ -296,6 +296,7 @@ if __name__ == "__main__":
     data["regret"] = data["regret"] / 100
     data["score"] = data["score"] / 100
 
-    Noisy(args, data)
+    aggr(args, data, "num_context")
+    # compareSLS_synthetic(args, data)
     # compareModelsLearned(args, data)
     # MILPvsSLS(data)
