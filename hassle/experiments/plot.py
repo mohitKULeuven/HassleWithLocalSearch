@@ -270,6 +270,8 @@ if __name__ == "__main__":
             "accuracy",
             "infeasiblity",
             "regret",
+            # "neighbours",
+            "time_taken",
         ],
     )
     CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
