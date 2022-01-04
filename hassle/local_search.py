@@ -281,6 +281,99 @@ def random_incorrect_example_index(model, data, contexts, labels, infeasible, rn
     return indices[index]
 
 
+def prune_neighbourhood_with_coverage_heuristic(current, neighbours, examples, inf):
+    """
+    Prunes the neighbourhood so that only those neighbours who do at least as well as the current model according to the
+    'coverage heuristic' are kept.
+    :param current: The current model
+    :param neighbours: A list of neighbours
+    :param examples: The list of examples, each of which is a context-instance-label tuple.
+    :param inf: Optional. A list with as many entries as there are examples. Each entry is True if the corresponding
+    example is infeasible, and False otherwise. An argument should be supplied if a distinction is to be made between
+    infeasible and suboptimal negative examples.
+    :return: A pruned list of neighbours
+    """
+    neighbours_pruned = []
+    for neighbour in neighbours:
+        if has_better_or_equal_coverage_heuristic(neighbour, current, examples, inf):
+            neighbours_pruned.append(neighbour)
+    return neighbours_pruned
+
+
+def has_better_or_equal_coverage_heuristic(neighbour, current, examples, inf):
+    """
+    Computes whether a given neighbouring model does at least as well as the current model according to the 'coverage
+    heuristic'. A neighbour that does not differ from the current model in a variable's occurrence in a clause (but
+    rather in a constraint's weight or hardness) trivially does equally well on the heuristic. For a neighbour that does
+    differ in one specific clause's literals, the coverage of that clause as it occurs in the neighbour is computed, as
+    well as for that clause as it occurs in the current model. If the former coverage is at least as large as the
+    latter, True is returned. Else, False is returned.
+    :param neighbour: The neighbouring model
+    :param current: The current model
+    :param examples: The list of examples, each of which is a context-instance-label tuple.
+    :param inf: Optional. A list with as many entries as there are examples. Each entry is True if the corresponding
+    example is infeasible, and False otherwise. An argument should be supplied if a distinction is to be made between
+    infeasible and suboptimal negative examples.
+    :return: True if the neighbouring model oes at least as well as the current model according to the 'coverage
+    heuristic', False otherwise
+    """
+    neighbour_as_genotype = auxiliary.MaxSAT_to_genotype(neighbour)
+    current_as_genotype = auxiliary.MaxSAT_to_genotype(current)
+
+    # Compute the index of the clause in which the current model and the neighbouring model differ in a literal
+    index_differing_clause = compute_differing_clause_index(neighbour_as_genotype, current_as_genotype)
+
+    if index_differing_clause is None:
+        # If the current model and the neighbouring model do not differ in a variable's occurrence (but rather in a
+        # constraint's weight or hardness), the coverage heuristic's value is the same
+        return True
+
+    neighbour_constraint = neighbour_as_genotype[index_differing_clause]
+    current_constraint = current_as_genotype[index_differing_clause]
+
+    # Some preprocessing to be in accordance with the format expected by the HASSLE-GEN code
+    if inf is None:
+        use_infeasibility = False
+        transformed_examples = examples
+    else:
+        use_infeasibility = True
+        transformed_examples = []
+        for i in range(len(examples)):
+            example = examples[i]
+            if example[2]:
+                new_label = 1
+            elif inf[i]:
+                new_label = -1
+            else:
+                new_label = 0
+            transformed_examples.append((example[0], example[1], new_label))
+
+    # Compute coverages
+    neighbour_coverage = sum(auxiliary.compute_clause_coverage_bitvector(neighbour_constraint, transformed_examples,
+                                                    clause_bitvector_cache=None, use_infeasibility=use_infeasibility))
+    current_coverage = sum(auxiliary.compute_clause_coverage_bitvector(current_constraint, transformed_examples,
+                                                    clause_bitvector_cache=None, use_infeasibility=use_infeasibility))
+
+    return neighbour_coverage >= current_coverage
+
+
+def compute_differing_clause_index(neighbour, current):
+    """
+    Computes the index of the (first) clause for which the current model and a neighbouring model differ in a variable's
+    occurrence. If there is no such clause (and thus the models differ in a constraint's hardness or weight), None is
+    returned
+    :param neighbour: The neighbouring model
+    :param current: The current model
+    :return: The index of the (first) clause for which the current model and a neighbouring model differ in a variable's
+    occurrence
+    """
+    for i in range(len(neighbour)):
+        for j in range(len(neighbour[i]) - 2):
+            if neighbour[i][j] != current[i][j]:
+                return i
+    return None
+
+
 def learn_weighted_max_sat(
         num_constraints: int,
         clause_len: int,
@@ -303,6 +396,7 @@ def learn_weighted_max_sat(
         recompute_random_incorrect_examples=True,
         conjunctive_contexts=False,
         perform_random_restarts=True,
+        prune_with_coverage_heuristic=False,
         initialization_attempts=1,
         variable_absence_bias=1,
         neighbourhood_limit=None,
@@ -331,6 +425,8 @@ def learn_weighted_max_sat(
         os.makedirs("pickles/learned_model")
 
     rng = np.random.RandomState(seed)
+    if use_knowledge_compilation or prune_with_coverage_heuristic:
+        examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
 
     # Initialising timers
     random_restart_time = 0
@@ -348,7 +444,6 @@ def learn_weighted_max_sat(
         new_model = random_model(data.shape[1], num_constraints, clause_len, rng,
                                  variable_absence_bias=variable_absence_bias)
         if use_knowledge_compilation:
-            examples = [[contexts[i], data[i], labels[i]] for i in range(len(data))]
             model_as_phenotype = auxiliary.to_phenotype(auxiliary.MaxSAT_to_genotype(new_model))
             new_score_as_proportion, new_correct_examples = evaluation.evaluate_knowledge_compilation_based_dispatch(
                 model_as_phenotype, examples, knowledge_compilation_variant=knowledge_compilation_variant,
@@ -465,6 +560,10 @@ def learn_weighted_max_sat(
                     conjunctive_contexts=conjunctive_contexts,
                     neighbourhood_limit=neighbourhood_limit
                 )
+
+                if prune_with_coverage_heuristic:
+                    neighbours = prune_neighbourhood_with_coverage_heuristic(model, neighbours, examples, inf)
+
             computing_neighbours_time += time.time() - time_point
 
             if len(neighbours) == 0 or (method != "walk_sat" and len(neighbours) < 2):
