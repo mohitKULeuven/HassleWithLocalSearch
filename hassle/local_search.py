@@ -421,8 +421,8 @@ def learn_weighted_max_sat(
         A list of weights and clauses. Every entry of the list is a tuple containing as first element None for hard
         constraints (clauses) or a floating point number for soft constraints, and as second element a set-encoded clause.
     """
-    if not os.path.exists("pickles/learned_model"):
-        os.makedirs("pickles/learned_model")
+    # if not os.path.exists("pickles/learned_model"):
+    #     os.makedirs("pickles/learned_model")
 
     rng = np.random.RandomState(seed)
     if use_knowledge_compilation or prune_with_coverage_heuristic:
@@ -567,7 +567,26 @@ def learn_weighted_max_sat(
             computing_neighbours_time += time.time() - time_point
 
             if len(neighbours) == 0 or (method != "walk_sat" and len(neighbours) < 2):
+                old_cumulative_time = cumulative_time
                 cumulative_time = random_restart_time + computing_neighbours_time + evaluation_time
+                itr += 1
+                for observer in observers:
+                    observer.observe_generation(
+                        itr,
+                        best_scores[-1] / data.shape[0],
+                        gen_duration=cumulative_time - old_cumulative_time,
+                        current_model_correct_examples=correct_examples,
+                        best_model_correct_examples=best_model_correct_examples[-1],
+                        current_score=score / data.shape[0],
+                        number_of_neighbours=len(neighbours),
+                        number_of_window_hits=total_window_hits,
+                        number_of_evaluations=number_of_evaluations,
+                        cumulative_time=cumulative_time,
+                        random_restart_time=random_restart_time,
+                        computing_neighbours_time=computing_neighbours_time,
+                        evaluation_time=evaluation_time,
+                        random_restart_count=random_restart_count
+                    )
                 continue
             nbr += len(neighbours)
 
@@ -670,22 +689,22 @@ def learn_weighted_max_sat(
 
     for i, score in enumerate(best_scores):
         best_scores[i] = score * 100 / num_example
-    pickle_var = {
-        "learned_model": solutions,
-        "time_taken": time_taken,
-        "score": best_scores,
-        "iterations": iterations,
-        "num_neighbour": num_neighbours,
-    }
-    if "cnf" in param:
-        pickle_var = {
-            "learned_model": [solutions[-1]],
-            "time_taken": [time_taken[-1]],
-            "score": [best_scores[-1]],
-            "iterations": [iterations[-1]],
-            "num_neighbour": num_neighbours,
-        }
-    pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
+    # pickle_var = {
+    #     "learned_model": solutions,
+    #     "time_taken": time_taken,
+    #     "score": best_scores,
+    #     "iterations": iterations,
+    #     "num_neighbour": num_neighbours,
+    # }
+    # if "cnf" in param:
+    #     pickle_var = {
+    #         "learned_model": [solutions[-1]],
+    #         "time_taken": [time_taken[-1]],
+    #         "score": [best_scores[-1]],
+    #         "iterations": [iterations[-1]],
+    #         "num_neighbour": num_neighbours,
+    #     }
+    #pickle.dump(pickle_var, open("pickles/learned_model/" + param + ".pickle", "wb"))
     print(f"Iterations: {itr}")
     print(f"Timing:\n"
           f"Random restarts: {random_restart_time}\n"
