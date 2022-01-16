@@ -44,12 +44,12 @@ def aggr(args, data, stat):
     # milp_data = milp_data[["model_seed", "context_seed", "max_cutoff"]]
     # tmp_data = pd.merge(tmp_data, milp_data, on=["model_seed", "context_seed", "max_cutoff"])
     mean_table = pd.pivot_table(
-        data, args.aggregate, index=[stat], aggfunc=np.mean
+        data, args.aggregate, index=stat, aggfunc=np.mean
     )
     line_mean_df = pd.DataFrame(mean_table.to_records())
     print(line_mean_df)
     std_table = pd.pivot_table(
-        data, args.aggregate, index=[stat], aggfunc=std_err
+        data, args.aggregate, index=stat, aggfunc=std_err
     )
     line_std_df = pd.DataFrame(std_table.to_records())
     print(line_std_df)
@@ -274,8 +274,8 @@ if __name__ == "__main__":
             "time_taken",
         ],
     )
-    CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["cutoff", "method"])
-    CLI.add_argument("--folder", type=str, default="results/benchmark_v3/")
+    CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["neg_type"])
+    CLI.add_argument("--folder", type=str, default="results/neg_type_v3/")
     CLI.add_argument("--file", type=str, default="evaluation")
     args = CLI.parse_args()
 
@@ -298,7 +298,7 @@ if __name__ == "__main__":
     data["regret"] = data["regret"] / 100
     data["score"] = data["score"] / 100
 
-    aggr(args, data, "num_context")
+    aggr(args, data, args.aggregate_over)
     # compareSLS_synthetic(args, data)
     # compareModelsLearned(args, data)
     # MILPvsSLS(data)
