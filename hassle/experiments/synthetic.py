@@ -19,6 +19,7 @@ from hassle.local_search import learn_weighted_max_sat
 
 from hassle.milp_learner import learn_weighted_max_sat_MILP
 from hassle.verify import get_recall_precision_wmc, get_infeasibility_wmc
+from hassle.experiments.benchmark import random_classifier
 
 
 def generate(n, h, s, seed, nc, num_pos, num_neg, neg_type, c_seed):

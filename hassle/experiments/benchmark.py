@@ -166,8 +166,8 @@ def evaluate(cnf_file, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, 
                 accuracy,
                 regret,
                 infeasiblity,
-            ) = evaluate_statistics(
-                n, target_model, learned_model, global_context
+            ) = evaluate_statistics_random(
+                n, target_model, global_context
             )
         if recall + precision == 0:
             f1_score = 0
@@ -216,6 +216,17 @@ def cnf_param(cnf_file, num_constraints):
             line = fp.readline()
     return 0, 0
 
+def evaluate_statistics_random(
+    n,
+    target_model: MaxSatModel,
+    context: Context,
+    sample_size=1000,
+    seed=111,
+):
+    f1_rand, reg_rand, inf_rand = random_classifier(
+        n, target_model, context, sample_size, seed
+    )
+    return 1,1,1, reg_rand, inf_rand
 
 def evaluate_statistics_sampling(
     n,

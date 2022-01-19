@@ -275,7 +275,7 @@ if __name__ == "__main__":
         ],
     )
     CLI.add_argument("--aggregate_over", nargs="*", type=str, default=["neg_type"])
-    CLI.add_argument("--folder", type=str, default="results/neg_type_v3/")
+    CLI.add_argument("--folder", type=str, default="results/neg_type_benchmark/")
     CLI.add_argument("--file", type=str, default="evaluation")
     args = CLI.parse_args()
 
