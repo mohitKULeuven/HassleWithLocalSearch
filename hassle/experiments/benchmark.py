@@ -95,7 +95,7 @@ def evaluate(cnf_file, h, s, seed, c, num_pos, num_neg, neg_type, context_seed, 
     path="cnfs/3cnf_benchmark/"
     adaptive_seed = seed
     n, _ = cnf_param(path + cnf_file, h+s)
-    max_t = 3600
+    max_t = 86400
     found = False
     while not found:
         if adaptive_seed-seed>100:
