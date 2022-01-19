@@ -252,8 +252,8 @@ def random_classifier(n, target_model, context, sample_size, seed):
     learned_sols = []
     while len(learned_sols) < sample_size:
         instance = rng.rand(n) > 0.5
-        for i in rng.choice(list(context), 1):
-            instance[abs(i) - 1] = i > 0
+        # for i in rng.choice(list(context), 1):
+        #     instance[abs(i) - 1] = i > 0
         if list(instance) in learned_sols:
             continue
         learned_sols.append(list(instance))
