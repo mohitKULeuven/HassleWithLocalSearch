@@ -94,7 +94,7 @@ def get_recall_precision_wmc(
     accuracy = (TN + combined_count) * 100 / pow(2, n)
     recall = combined_count * 100 / true_count
     precision = combined_count * 100 / learned_count
-    return recall, precision, accuracy
+    return true_count, learned_count, combined_count
 
 
 def get_infeasibility_wmc(
