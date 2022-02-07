@@ -29,7 +29,7 @@ def solve_weighted_max_sat(
         if w != 0 and len(clause) > 0:
             c.append(list(map(int, list(clause))), weight=w)
 
-    if len(context) > 0:
+    if context and len(context) > 0:
         if not conjunctive_contexts:
             #c.append(list(map(int, list(context))), weight=None)
             c.append(list(map(int, list(context))))
