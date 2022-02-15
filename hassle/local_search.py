@@ -400,6 +400,7 @@ def learn_weighted_max_sat(
         initialization_attempts=1,
         variable_absence_bias=1,
         neighbourhood_limit=None,
+        initial_model=None,
         observers=None
 ):
     """
@@ -436,31 +437,44 @@ def learn_weighted_max_sat(
 
     # Initialization
     time_point = time.time()
-    model = None
-    score = 0
-    number_of_evaluations = 0
     bar = tqdm("Score", total=100)
-    for i in range(initialization_attempts):
-        new_model = random_model(data.shape[1], num_constraints, clause_len, rng,
-                                 variable_absence_bias=variable_absence_bias)
-        if use_knowledge_compilation:
-            model_as_phenotype = auxiliary.to_phenotype(auxiliary.MaxSAT_to_genotype(new_model))
-            new_score_as_proportion, new_correct_examples = evaluation.evaluate_knowledge_compilation_based_dispatch(
-                model_as_phenotype, examples, knowledge_compilation_variant=knowledge_compilation_variant,
-                use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
-                conjunctive_contexts=conjunctive_contexts, inf=inf)
-            new_score = int(round(new_score_as_proportion * len(examples)))
-        else:
-            new_score, new_correct_examples = new_model.score(data, labels, contexts, inf,
-                                                              conjunctive_contexts=conjunctive_contexts)
-        if new_score > score:
-            model = new_model
-            score = new_score
-            correct_examples = new_correct_examples
-    number_of_evaluations += initialization_attempts
+    number_of_evaluations = 0
+    if initial_model is None:
+        model = None
+        score = 0
 
+
+        for i in range(initialization_attempts):
+            new_model = random_model(data.shape[1], num_constraints, clause_len, rng,
+                                     variable_absence_bias=variable_absence_bias)
+            if use_knowledge_compilation:
+                model_as_phenotype = auxiliary.to_phenotype(auxiliary.MaxSAT_to_genotype(new_model))
+                new_score_as_proportion, new_correct_examples = evaluation.evaluate_knowledge_compilation_based_dispatch(
+                    model_as_phenotype, examples, knowledge_compilation_variant=knowledge_compilation_variant,
+                    use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
+                    conjunctive_contexts=conjunctive_contexts, inf=inf)
+                new_score = int(round(new_score_as_proportion * len(examples)))
+            else:
+                new_score, new_correct_examples = new_model.score(data, labels, contexts, inf,
+                                                                  conjunctive_contexts=conjunctive_contexts)
+            if new_score > score:
+                model = new_model
+                score = new_score
+                correct_examples = new_correct_examples
+
+        number_of_evaluations += initialization_attempts
+    else:
+        model = auxiliary.phenotype_to_MaxSAT(initial_model, data.shape[1])
+        model_as_phenotype = initial_model
+        score_as_proportion, correct_examples = evaluation.evaluate_knowledge_compilation_based_dispatch(
+            model_as_phenotype, examples, knowledge_compilation_variant=knowledge_compilation_variant,
+            use_diagram_for_instance_evaluation=use_diagram_for_instance_evaluation,
+            conjunctive_contexts=conjunctive_contexts, inf=inf)
+        score = int(round(score_as_proportion * len(examples)))
+        number_of_evaluations += 1
     evaluation_time += time.time() - time_point
     bar.update(score * 100 / data.shape[0])
+
 
     # Update cumulative time
     cumulative_time = random_restart_time + computing_neighbours_time + evaluation_time

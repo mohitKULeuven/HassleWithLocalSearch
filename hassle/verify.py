@@ -61,6 +61,8 @@ def convert_to_logic(manager: SddManager, n: int, model: MaxSatModel, context: C
                 for i in assignment:
                     assignment_result &= clause_to_sdd(soft_constraints[i][1], manager)
                 soft_result |= assignment_result
+                if assignment == {i for i in range(len(soft_constraints))}:
+                    break
             return hard_result & soft_result
         return hard_result
 
